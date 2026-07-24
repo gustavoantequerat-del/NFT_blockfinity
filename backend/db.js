@@ -1,8 +1,12 @@
-// SQLite integrado en Node.js 22+ — sin dependencias nativas
-const { DatabaseSync } = require('node:sqlite');
+// Reemplazamos 'node:sqlite' por un driver estable compatible con Linux y Windows
+const Database = require('better-sqlite3-multiple-ciphers');
 const path = require('path');
 
-const db = new DatabaseSync(path.join(__dirname, 'database.sqlite'));
+// Inicializamos la base de datos
+const db = new Database(path.join(__dirname, 'database.sqlite'));
+
+// Habilitar claves foráneas (buena práctica en SQLite)
+db.pragma('foreign_keys = ON');
 
 // Tabla de usuarios administradores del panel (login, registro).
 db.exec(`
