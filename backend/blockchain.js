@@ -3,7 +3,9 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
-const pdfPoppler = require('pdf-poppler');
+//const pdfPoppler = require('pdf-poppler');
+// Por esto:
+const { fromPath } = require('pdf2pic');
 
 const rpcUrl = process.env.RPC_URL?.trim();
 const universityWallet = process.env.UNIVERSITY_WALLET?.trim();
@@ -347,18 +349,24 @@ async function validateNetwork() {
 // "image" del NFT, ya que wallets y marketplaces esperan una imagen).
 async function generatePdfPreview(pdfPath) {
   const outputDir = path.dirname(pdfPath);
-  const outputPrefix = `${path.parse(pdfPath).name}-preview`;
+  const baseName = path.parse(pdfPath).name;
+  const outputPrefix = `${baseName}-preview`;
 
   const options = {
+    density: 100,
+    saveFilename: outputPrefix,
+    savePath: outputDir,
     format: 'png',
-    out_dir: outputDir,
-    out_prefix: outputPrefix,
-    page: 1,
+    width: 800,
+    height: 600
   };
 
-  await pdfPoppler.convert(pdfPath, options);
+  const storeAsImage = fromPath(pdfPath, options);
+  
+  // Convierte la página 1
+  await storeAsImage(1, { responseType: 'image' });
 
-  const previewPath = path.join(outputDir, `${outputPrefix}-1.png`);
+  const previewPath = path.join(outputDir, `${outputPrefix}.1.png`);
 
   if (!fs.existsSync(previewPath)) {
     throw new Error('No se pudo generar la imagen preview del PDF');
