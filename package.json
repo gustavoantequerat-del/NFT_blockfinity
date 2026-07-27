@@ -1,0 +1,13 @@
+{
+  "name": "nft-blockfinity",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Orquesta el build y arranque del proyecto (backend Express + frontend estático + app de registro en Vite) para deploy en Render.",
+  "scripts": {
+    "build": "npm install --prefix backend --no-audit --no-fund && npm install --prefix registro-wallet --include=dev --no-audit --no-fund && npm run build --prefix registro-wallet",
+    "start": "node backend/server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
