@@ -28,7 +28,18 @@ app.use(express.json());
 // Página pública de auto-registro de wallet (React + Vite, compilada con
 // "npm run build" en registro-wallet/). Va antes del estático del panel
 // admin para que /registro se resuelva aquí primero.
-app.use('/registro', express.static(path.join(__dirname, '..', 'registro-wallet', 'dist')));
+const registroDist = path.join(__dirname, '..', 'registro-wallet', 'dist');
+app.use('/registro', express.static(registroDist));
+
+// Fallback SPA: cualquier ruta bajo /registro que no sea un archivo estático
+// (ej. /registro, /registro/algo) devuelve el index.html compilado. Evita el
+// "Cannot GET /registro" cuando se navega directo a esa URL. Si dist/index.html
+// no existe (build no ejecutado), pasa al siguiente handler en vez de romper.
+app.get(['/registro', '/registro/*'], (req, res, next) => {
+  res.sendFile(path.join(registroDist, 'index.html'), (err) => {
+    if (err) next();
+  });
+});
 
 app.use(
   express.static(path.join(__dirname, '..', 'frontend'), {
