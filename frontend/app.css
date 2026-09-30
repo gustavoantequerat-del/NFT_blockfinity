@@ -244,8 +244,8 @@ button { font-family: inherit; }
 .btn:active { transform: translateY(.5px); }
 .btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); box-shadow: var(--shadow-sm); }
 .btn--primary:hover { background: var(--accent-press); border-color: var(--accent-press); }
-.btn--ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
-.btn--ghost:hover { background: var(--surface-2); border-color: var(--line); }
+.btn--ghost { background: transparent; border-color: var(--line-strong); color: var(--ink-2); }
+.btn--ghost:hover { background: var(--surface-2); border-color: var(--muted); }
 .btn--lg { height: 44px; padding: 0 22px; font-size: 14.5px; }
 .btn--block { width: 100%; }
 .btn--danger { color: var(--err); border-color: color-mix(in oklab, var(--err) 30%, var(--line-strong)); }
@@ -398,6 +398,7 @@ button { font-family: inherit; }
     repeating-linear-gradient(135deg, #fafbfc 0 11px, #f1f2f5 11px 22px);
   display: grid; place-items: center; text-align: center; color: var(--faint);
   font-family: var(--font-mono); font-size: 12px; line-height: 1.7; position: relative;
+  overflow: hidden;
 }
 .preview-ph .pl { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
 

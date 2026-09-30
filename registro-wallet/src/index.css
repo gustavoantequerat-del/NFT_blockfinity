@@ -1,3 +1,6 @@
+@import "./brand-kit/design-tokens.css";
+@import "./brand-kit/fonts.css";
+
 :root {
   color-scheme: light;
 }
@@ -14,5 +17,5 @@ body,
 }
 
 body {
-  font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
 }

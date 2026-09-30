@@ -462,6 +462,7 @@ router.post('/masivo/emitir', (req, res) => {
           estado: item.status,
           creadoPor,
         });
+
       } catch (mintError) {
         console.error(`❌ Falló el mint para ${item.studentName}:`, mintError.message);
         item.stage = 'error';
@@ -551,12 +552,28 @@ router.get('/participantes', (req, res) => {
 
 // GET /api/certificados/participantes/exportar — descarga un Excel con
 // columnas nombre/wallet, en el mismo formato que espera el wizard de
-// emisión masiva, listo para subirlo ahí directamente.
+// emisión masiva, listo para subirlo ahí directamente. Con ?ids=1,2,3 exporta
+// solo esos participantes (los marcados con su casilla en el panel); sin ese
+// parámetro exporta la tabla completa.
 router.get('/participantes/exportar', (req, res) => {
   try {
-    const participantes = db
-      .prepare('SELECT nombre, wallet FROM participantes ORDER BY creado_en ASC, id ASC')
-      .all();
+    const idsParam = (req.query.ids || '').trim();
+    let participantes;
+
+    if (idsParam) {
+      const ids = idsParam.split(',').map(Number).filter(Number.isInteger);
+      if (!ids.length) {
+        return res.status(400).json({ success: false, message: 'No se especificaron participantes válidos.' });
+      }
+      const placeholders = ids.map(() => '?').join(',');
+      participantes = db
+        .prepare(`SELECT nombre, wallet FROM participantes WHERE id IN (${placeholders}) ORDER BY creado_en ASC, id ASC`)
+        .all(...ids);
+    } else {
+      participantes = db
+        .prepare('SELECT nombre, wallet FROM participantes ORDER BY creado_en ASC, id ASC')
+        .all();
+    }
 
     const ws = xlsx.utils.json_to_sheet(participantes);
     ws['!cols'] = [{ wch: 28 }, { wch: 46 }];
@@ -572,11 +589,16 @@ router.get('/participantes/exportar', (req, res) => {
   }
 });
 
+// Módulos públicos de auto-registro existentes (ver registro-wallet/src/App.jsx
+// y server.js); cualquier otro valor recibido cae a 'foro' por seguridad.
+const EVENTOS_VALIDOS = ['foro', 'asoban'];
+
 // POST /api/certificados/participantes — alta manual desde el panel admin
 // (mismo destino que el auto-registro público, para completar la tabla a mano).
 router.post('/participantes', (req, res) => {
   const nombre = (req.body?.nombre || '').trim();
   const wallet = (req.body?.wallet || '').trim();
+  const evento = EVENTOS_VALIDOS.includes(req.body?.evento) ? req.body.evento : 'foro';
 
   if (!nombre) return res.status(400).json({ success: false, message: 'Falta el nombre completo.' });
   if (!blockchain.web3.utils.isAddress(wallet)) {
@@ -584,27 +606,28 @@ router.post('/participantes', (req, res) => {
   }
 
   const info = db
-    .prepare('INSERT INTO participantes (nombre, wallet, tipo) VALUES (?, ?, ?)')
-    .run(nombre, wallet, 'manual');
+    .prepare('INSERT INTO participantes (nombre, wallet, tipo, evento) VALUES (?, ?, ?, ?)')
+    .run(nombre, wallet, 'manual', evento);
 
   const participante = db.prepare('SELECT * FROM participantes WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json({ success: true, participante });
 });
 
-// PATCH /api/certificados/participantes/:id — edita nombre y/o wallet de un participante existente.
+// PATCH /api/certificados/participantes/:id — edita nombre, wallet y/o evento de un participante existente.
 router.patch('/participantes/:id', (req, res) => {
   const existente = db.prepare('SELECT * FROM participantes WHERE id = ?').get(req.params.id);
   if (!existente) return res.status(404).json({ success: false, message: 'Participante no encontrado.' });
 
   const nombre = (req.body?.nombre || '').trim();
   const wallet = (req.body?.wallet || '').trim();
+  const evento = EVENTOS_VALIDOS.includes(req.body?.evento) ? req.body.evento : existente.evento;
 
   if (!nombre) return res.status(400).json({ success: false, message: 'Falta el nombre completo.' });
   if (!blockchain.web3.utils.isAddress(wallet)) {
     return res.status(400).json({ success: false, message: 'La wallet no tiene un formato válido.' });
   }
 
-  db.prepare('UPDATE participantes SET nombre = ?, wallet = ? WHERE id = ?').run(nombre, wallet, req.params.id);
+  db.prepare('UPDATE participantes SET nombre = ?, wallet = ?, evento = ? WHERE id = ?').run(nombre, wallet, evento, req.params.id);
   const participante = db.prepare('SELECT * FROM participantes WHERE id = ?').get(req.params.id);
   res.status(200).json({ success: true, participante });
 });

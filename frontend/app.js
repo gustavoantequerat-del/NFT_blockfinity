@@ -979,7 +979,29 @@
   }
 
   /* ---------------- modal Participantes (CRUD) ---------------- */
-  var participantesState = { items: [], editingId: null };
+  var participantesState = { items: [], editingId: null, selectedIds: {}, filterEvento: "todos" };
+
+  // Devuelve solo los participantes que coinciden con el filtro de evento
+  // activo ("Mostrar: Todos/Foro/ASOBAN") — es sobre esta lista filtrada que
+  // operan la tabla, "seleccionar todos" y, por lo tanto, la exportación.
+  function getParticipantesFiltrados() {
+    var items = participantesState.items;
+    if (participantesState.filterEvento === "todos") return items;
+    return items.filter(function (p) { return p.evento === participantesState.filterEvento; });
+  }
+
+  // Sincroniza la casilla "seleccionar todos" del encabezado: marcada si
+  // todos los participantes visibles (según el filtro) están seleccionados,
+  // sin marcar si ninguno lo está, e "indeterminada" (raya) si hay una
+  // selección parcial.
+  function updateSelectAllCheckbox() {
+    var selectAll = document.getElementById("participantes-select-all");
+    if (!selectAll) return;
+    var items = getParticipantesFiltrados();
+    var selectedCount = items.filter(function (p) { return participantesState.selectedIds[p.id]; }).length;
+    selectAll.checked = items.length > 0 && selectedCount === items.length;
+    selectAll.indeterminate = selectedCount > 0 && selectedCount < items.length;
+  }
 
   // Escapa texto antes de insertarlo como HTML en las celdas de la tabla.
   function escapeHtml(str) {
@@ -1004,20 +1026,31 @@
       .then(function (data) {
         if (!data.success) { toast(data.message || "No se pudo cargar participantes", true); return; }
         participantesState.items = data.participantes;
+        // Descarta selecciones de participantes que ya no existen (eliminados, etc.).
+        var vigentes = {};
+        data.participantes.forEach(function (p) {
+          if (participantesState.selectedIds[p.id]) vigentes[p.id] = true;
+        });
+        participantesState.selectedIds = vigentes;
         renderParticipantesTable();
       })
       .catch(function () { toast("Error de conexión al cargar participantes", true); });
   }
 
-  // Dibuja la tabla; las filas en edición muestran inputs en vez de texto.
+  // Dibuja la tabla (respetando el filtro de evento activo); las filas en
+  // edición muestran inputs en vez de texto.
   function renderParticipantesTable() {
     var tbody = document.getElementById("participantes-table-body");
     var empty = document.getElementById("participantes-empty");
-    var items = participantesState.items;
+    var items = getParticipantesFiltrados();
 
     if (!items.length) {
       tbody.innerHTML = "";
       empty.style.display = "";
+      empty.textContent = participantesState.items.length
+        ? "Ningún participante coincide con el filtro seleccionado."
+        : "Todavía no hay participantes registrados.";
+      updateSelectAllCheckbox();
       return;
     }
     empty.style.display = "none";
@@ -1027,18 +1060,31 @@
       var tipoTag = p.tipo === "creada"
         ? '<span class="tag ok">creada</span>'
         : (p.tipo === "manual" ? '<span class="tag wait">manual</span>' : '<span class="tag run">existente</span>');
+      var eventoTag = p.evento === "asoban"
+        ? '<span class="tag wait">ASOBAN</span>'
+        : '<span class="tag run">Foro</span>';
 
       var ICON_SAVE   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg>';
       var ICON_CANCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>';
       var ICON_EDIT   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
       var ICON_DELETE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
 
+      var checked = participantesState.selectedIds[p.id] ? " checked" : "";
+      var checkboxCell = '<td><input type="checkbox" data-select-id="' + p.id + '"' + checked + ' /></td>';
+
       if (participantesState.editingId === p.id) {
         return (
           '<tr>' +
+            checkboxCell +
             '<td><input class="input" style="height:34px;padding:0 10px;" id="edit-nombre-' + p.id + '" value="' + escapeHtml(p.nombre) + '" /></td>' +
             '<td><input class="input mono" style="height:34px;padding:0 10px;" id="edit-wallet-' + p.id + '" value="' + escapeHtml(p.wallet) + '" /></td>' +
             '<td>' + tipoTag + '</td>' +
+            '<td>' +
+              '<select class="input" style="height:34px;padding:0 8px;" id="edit-evento-' + p.id + '">' +
+                '<option value="foro"' + (p.evento === "asoban" ? "" : " selected") + '>Foro</option>' +
+                '<option value="asoban"' + (p.evento === "asoban" ? " selected" : "") + '>ASOBAN</option>' +
+              '</select>' +
+            '</td>' +
             '<td class="mono" style="font-size:11.5px;color:var(--muted);">' + fecha + '</td>' +
             '<td style="white-space:nowrap;">' +
               '<button class="icon-btn ok" data-save-id="' + p.id + '" type="button" title="Guardar">' + ICON_SAVE + '</button>' +
@@ -1050,9 +1096,11 @@
 
       return (
         '<tr>' +
+          checkboxCell +
           '<td class="nm">' + escapeHtml(p.nombre) + '</td>' +
           '<td class="mono">' + escapeHtml(p.wallet) + '</td>' +
           '<td>' + tipoTag + '</td>' +
+          '<td>' + eventoTag + '</td>' +
           '<td class="mono" style="font-size:11.5px;color:var(--muted);">' + fecha + '</td>' +
           '<td style="white-space:nowrap;">' +
             '<button class="icon-btn edit" data-edit-id="' + p.id + '" type="button" title="Editar">' + ICON_EDIT + '</button>' +
@@ -1061,20 +1109,24 @@
         '</tr>'
       );
     }).join("");
+
+    updateSelectAllCheckbox();
   }
 
   // POST /api/certificados/participantes — alta manual desde el formulario del modal.
   function addParticipante() {
     var nombreInput = document.getElementById("part-add-nombre");
     var walletInput = document.getElementById("part-add-wallet");
+    var eventoInput = document.getElementById("part-add-evento");
     var nombre = nombreInput.value.trim();
     var wallet = walletInput.value.trim();
+    var evento = eventoInput ? eventoInput.value : "foro";
     if (!nombre || !wallet) { toast("Completa nombre y wallet", true); return; }
 
     fetch("/api/certificados/participantes", {
       method: "POST",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ nombre: nombre, wallet: wallet }),
+      body: JSON.stringify({ nombre: nombre, wallet: wallet, evento: evento }),
     })
       .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
       .then(function (r) {
@@ -1091,14 +1143,16 @@
   function saveParticipante(id) {
     var nombreInput = document.getElementById("edit-nombre-" + id);
     var walletInput = document.getElementById("edit-wallet-" + id);
+    var eventoInput = document.getElementById("edit-evento-" + id);
     var nombre = nombreInput.value.trim();
     var wallet = walletInput.value.trim();
+    var evento = eventoInput ? eventoInput.value : undefined;
     if (!nombre || !wallet) { toast("Completa nombre y wallet", true); return; }
 
     fetch("/api/certificados/participantes/" + id, {
       method: "PATCH",
       headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ nombre: nombre, wallet: wallet }),
+      body: JSON.stringify({ nombre: nombre, wallet: wallet, evento: evento }),
     })
       .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
       .then(function (r) {
@@ -1126,8 +1180,15 @@
 
   // GET /api/certificados/participantes/exportar — descarga el Excel autenticando la petición
   // manualmente (un <a href> normal no podría mandar el header Authorization).
+  // Solo exporta los participantes marcados con su casilla; si no hay ninguno
+  // marcado, avisa y no descarga nada.
   function exportParticipantes() {
-    fetch("/api/certificados/participantes/exportar", { headers: authHeaders() })
+    var ids = Object.keys(participantesState.selectedIds).filter(function (id) {
+      return participantesState.selectedIds[id];
+    });
+    if (!ids.length) { toast("Selecciona al menos un participante para exportar", true); return; }
+
+    fetch("/api/certificados/participantes/exportar?ids=" + ids.join(","), { headers: authHeaders() })
       .then(function (res) {
         if (!res.ok) throw new Error("No se pudo exportar");
         return res.blob();
@@ -1163,7 +1224,33 @@
     var exportBtn = document.getElementById("participantes-export-btn");
     if (exportBtn) exportBtn.addEventListener("click", exportParticipantes);
 
+    var selectAll = document.getElementById("participantes-select-all");
+    if (selectAll) selectAll.addEventListener("change", function () {
+      // Solo afecta a los participantes actualmente visibles según el filtro
+      // de evento — no borra selecciones hechas en otro filtro.
+      getParticipantesFiltrados().forEach(function (p) {
+        if (selectAll.checked) participantesState.selectedIds[p.id] = true;
+        else delete participantesState.selectedIds[p.id];
+      });
+      renderParticipantesTable();
+    });
+
+    var filterEvento = document.getElementById("participantes-filter-evento");
+    if (filterEvento) filterEvento.addEventListener("change", function () {
+      participantesState.filterEvento = filterEvento.value;
+      renderParticipantesTable();
+    });
+
     var tbody = document.getElementById("participantes-table-body");
+    if (tbody) tbody.addEventListener("change", function (e) {
+      var el = e.target.closest("[data-select-id]");
+      if (!el) return;
+      var id = el.getAttribute("data-select-id");
+      if (el.checked) participantesState.selectedIds[id] = true;
+      else delete participantesState.selectedIds[id];
+      updateSelectAllCheckbox();
+    });
+
     if (tbody) tbody.addEventListener("click", function (e) {
       var el = e.target.closest("[data-edit-id],[data-cancel-id],[data-save-id],[data-delete-id]");
       if (!el) return;

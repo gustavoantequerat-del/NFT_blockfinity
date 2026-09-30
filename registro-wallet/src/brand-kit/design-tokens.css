@@ -1,0 +1,40 @@
+/* =========================================================================
+   BRANDING FORO ACTIVOS DIGITALES BOLIVIA 2026
+   Tokens de color y tipografía extraídos del diseño de Claude Design.
+   Fuente única de verdad para el rebranding del portal registro-wallet.
+   ========================================================================= */
+
+:root {
+  /* ---- Paleta base ---- */
+  --navy:       #0d1f30;   /* azul marino principal (fondos oscuros, texto sobre claro) */
+  --navy-soft:  #14283b;   /* marino secundario */
+  --navy-card:  #16304a;   /* marino para tarjetas sobre fondo oscuro */
+  --teal:       #50bcbd;   /* teal principal (color de marca / acentos / botones) */
+  --teal-deep:  #3a9fa0;   /* teal oscuro (hover de botones) */
+  --cream:      #f5f4f0;   /* crema (fondo claro principal) */
+  --cream-2:    #efece4;   /* crema secundario */
+  --white:      #ffffff;
+  --gray-1:     #d9dee2;
+  --gray-2:     #bfc3c6;
+  --speaker-bg: #1d5e88;   /* azul medio (usado en tarjetas de speakers) */
+
+  /* ---- Tipografía ---- */
+  --font-display: "Clash Display", "Helvetica Neue", Arial, sans-serif; /* títulos */
+  --font-body:    "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; /* texto */
+  --font-mono:    "IBM Plex Mono", ui-monospace, monospace;             /* etiquetas / mono */
+
+  /* ---- Roles semánticos (recomendado usar estos en los componentes) ---- */
+  --bg:          var(--cream);
+  --fg:          var(--navy);
+  --fg-muted:    color-mix(in srgb, var(--navy) 62%, transparent);
+  --fg-faint:    color-mix(in srgb, var(--navy) 42%, transparent);
+  --line:        color-mix(in srgb, var(--navy) 13%, transparent);
+  --line-strong: color-mix(in srgb, var(--navy) 26%, transparent);
+  --card:        var(--white);
+  --card-line:   color-mix(in srgb, var(--navy) 9%, transparent);
+
+  /* ---- Layout / motion ---- */
+  --maxw:   1240px;
+  --gutter: clamp(20px, 5vw, 64px);
+  --ease:   cubic-bezier(0.22, 1, 0.36, 1);
+}

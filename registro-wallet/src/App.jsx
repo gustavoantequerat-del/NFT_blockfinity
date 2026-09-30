@@ -1,13 +1,21 @@
-import { useState, useEffect } from "react";
-import { useWeb3AuthConnect } from "@web3auth/modal/react";
-import { useAccount } from "wagmi";
+import { useState, useEffect, useRef } from "react";
+import logoForoColor from "./brand-kit/logos/logo-B_460x67.png";
+import logoForoWhite from "./brand-kit/logos/logo-F_460x165.png";
+import logoCablockWhite from "./brand-kit/logos/cablock-isotipo-white.png";
+import logoAsobanColor from "./brand-kit/logos/asoban-color.png";
+import logoAsobanIconWhite from "./brand-kit/logos/asoban-icon-white.png";
+import logoBlockfinityWhite from "./brand-kit/logos/blockfinity-white.png";
 
 /*
   Recibe tu certificado Web3 — Blockfinity Advisors
   ----------------------------------------------------------------
-  Dos caminos:
-    - "Ya tengo wallet": la persona pega su dirección 0x...
-    - "No tengo wallet": Web3Auth crea una wallet real con login social/correo
+  Dos caminos, ambos usando la extensión de MetaMask (window.ethereum):
+    - "Ya tengo wallet": la persona pega su dirección 0x... (o la detectamos
+      automáticamente si el sitio ya está autorizado).
+    - "No tengo wallet": si MetaMask ya está instalada, le pedimos crear/
+      conectar una cuenta (se abre el popup propio de la extensión). Si no
+      está instalada, abrimos su página de descarga en una pestaña nueva y
+      esperamos en segundo plano a que aparezca para reconocerla sola.
 
   guardarRegistro() llama a nuestro propio backend (POST /api/registro,
   público — no requiere haber iniciado sesión en el panel admin).
@@ -29,33 +37,44 @@ const IconCopy = () => (
 const IconShield = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z" /><path d="M9 12l2 2 4-4" /></svg>
 );
+const IconClock = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3.5 2" /></svg>
+);
 
 const CSS = `
   .rc-root{
-    --ink:#181b21; --ink-2:#41454e; --muted:#71757e; --faint:#9a9da4;
-    --line:#e7e8ec; --line-strong:#d6d8dd;
-    --accent:#2f56d3; --accent-press:#2342a8; --accent-weak:#eef2fd; --on-accent:#ffffff;
+    --ink:var(--navy); --ink-2:var(--navy); --muted:var(--fg-muted); --faint:var(--fg-faint);
+    --accent:var(--teal); --accent-press:var(--teal-deep); --accent-weak:color-mix(in srgb, var(--teal) 12%, transparent); --on-accent:var(--white);
     --ok:#1f8a52; --ok-weak:#e8f5ee;
     --err:#c0392b; --err-weak:#fbecea;
     --warn:#9a6b00; --warn-weak:#fbf3e0;
-    --bg:#f5f6f8; --card:#ffffff;
+    --bg:var(--cream);
     --radius:12px; --radius-sm:8px; --radius-xs:6px;
     --shadow-sm:0 1px 2px rgba(20,22,28,.05), 0 1px 3px rgba(20,22,28,.04);
     --shadow-md:0 8px 24px rgba(20,22,28,.10);
-    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-family:var(--font-body);
     color:var(--ink); background:var(--bg);
     min-height:100vh; width:100%; box-sizing:border-box;
     -webkit-font-smoothing:antialiased;
+    display:flex; flex-direction:column;
   }
   .rc-root *{box-sizing:border-box;}
-  .rc-topbar{display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--line);}
-  .rc-brand{display:inline-flex; align-items:center; gap:10px; font-weight:600; letter-spacing:-0.01em; color:var(--ink); font-size:14px;}
-  .rc-logo{height:30px; min-width:30px; padding:0 9px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius-xs); background:var(--accent); color:var(--on-accent); font-weight:600; letter-spacing:.01em; font-size:13px;}
-  .rc-tag{font-size:12px; color:var(--muted);}
-  .rc-shell{max-width:640px; margin:0 auto; padding:56px 24px 72px;}
-  .rc-eyebrow{font-size:12px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); margin:0 0 18px;}
-  .rc-seal{margin-bottom:24px;}
-  .rc-title{font-size:38px; line-height:1.05; font-weight:600; letter-spacing:-0.025em; color:var(--ink); margin:0 0 16px;}
+  .rc-topbar{display:flex; align-items:center; justify-content:space-between; padding:20px 24px; background:var(--navy); border-bottom:1px solid var(--navy-soft);}
+  .rc-brand{display:inline-flex; align-items:center; gap:14px; font-weight:600; letter-spacing:-0.01em; color:var(--white); font-size:14px;}
+  .rc-brand-sep{width:1px; height:24px; background:var(--navy-soft);}
+  .rc-brand-text{display:flex; flex-direction:column; line-height:1.2;}
+  .rc-brand-name{font-family:var(--font-display); font-size:18px; font-weight:600; letter-spacing:0.02em; color:var(--white);}
+  .rc-brand-tagline{font-family:var(--font-mono); font-size:9px; letter-spacing:0.02em; color:var(--gray-1); text-transform:uppercase; margin-top:1px;}
+  .rc-logo-img{height:32px; width:auto; display:block;}
+  .rc-logo-img--asoban{height:44px;}
+  .rc-logo-img--blockfinity{height:46px;}
+  .rc-tag{font-family:var(--font-mono); font-size:12px; color:var(--gray-1);}
+  .rc-shell{max-width:640px; margin:0 auto; padding:56px 24px 72px; width:100%; flex:1;}
+  .rc-shell--wide{max-width:1160px;}
+  .rc-eyebrow{font-family:var(--font-mono); font-size:12px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent); margin:0 0 18px;}
+  .rc-seal{height:40px; width:auto; display:block; margin-bottom:24px;}
+  .rc-seal--asoban{height:64px;}
+  .rc-title{font-family:var(--font-display); font-size:38px; line-height:1.05; font-weight:600; letter-spacing:-0.025em; color:var(--ink); margin:0 0 16px;}
   .rc-sub{font-size:17px; line-height:1.6; color:var(--muted); margin:0 0 40px; max-width:52ch;}
   .rc-prompt{font-size:14px; font-weight:600; color:var(--ink); margin:0 0 16px;}
   .rc-cards{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
@@ -65,17 +84,17 @@ const CSS = `
   .rc-card:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
   .rc-ico{width:44px; height:44px; border-radius:11px; display:grid; place-items:center; background:var(--warn-weak); color:var(--warn);}
   .rc-ico.blue{background:var(--accent-weak); color:var(--accent);}
-  .rc-card h3{font-size:16px; font-weight:600; color:var(--ink); margin:0;}
+  .rc-card h3{font-family:var(--font-display); font-size:16px; font-weight:600; color:var(--ink); margin:0;}
   .rc-card p{font-size:14px; line-height:1.5; color:var(--muted); margin:0;}
   .rc-panel{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:28px; box-shadow:var(--shadow-sm);}
   .rc-back{display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:var(--muted); font:inherit; font-size:14px; cursor:pointer; padding:0; margin:0 0 20px;}
   .rc-back:hover{color:var(--ink);}
   .rc-back:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:4px;}
-  .rc-panel h2{font-size:22px; font-weight:600; letter-spacing:-0.02em; color:var(--ink); margin:0 0 8px;}
+  .rc-panel h2{font-family:var(--font-display); font-size:22px; font-weight:600; letter-spacing:-0.02em; color:var(--ink); margin:0 0 8px;}
   .rc-panel .lead{font-size:15px; line-height:1.55; color:var(--muted); margin:0 0 24px;}
   .rc-label{display:block; font-size:14px; font-weight:600; color:var(--ink-2); margin:0 0 8px;}
   .rc-input{width:100%; font:inherit; font-size:16px; padding:13px 14px; color:var(--ink); background:var(--card); border:1px solid var(--line-strong); border-radius:var(--radius-sm); transition:border-color .15s, box-shadow .15s;}
-  .rc-input.mono{font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;}
+  .rc-input.mono{font-family:var(--font-mono);}
   .rc-input::placeholder{color:var(--faint);}
   .rc-input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-weak);}
   .rc-field{margin-bottom:20px;}
@@ -92,64 +111,106 @@ const CSS = `
   @keyframes rc-rot{to{transform:rotate(360deg);}}
   .rc-ok-badge{width:56px; height:56px; border-radius:50%; background:var(--ok-weak); color:var(--ok); display:grid; place-items:center; margin:0 0 20px;}
   .rc-addr{display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--bg); border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 14px; margin:16px 0 0;}
-  .rc-addr code{font-family:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace; font-size:13px; color:var(--ink); word-break:break-all;}
+  .rc-addr code{font-family:var(--font-mono); font-size:13px; color:var(--ink); word-break:break-all;}
   .rc-copy{flex-shrink:0; display:inline-flex; align-items:center; gap:5px; font:inherit; font-size:13px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-xs); padding:7px 10px; cursor:pointer; color:var(--muted);}
   .rc-copy:hover{color:var(--accent); border-color:var(--accent);}
   .rc-note{display:flex; gap:10px; align-items:flex-start; margin-top:20px; padding:14px; background:var(--warn-weak); border:1px solid #ecdfc2; border-radius:var(--radius-sm); font-size:13.5px; line-height:1.5; color:#6b4d05;}
   .rc-note svg{flex-shrink:0; margin-top:1px;}
-  .rc-foot{text-align:center; font-size:12px; color:var(--muted); padding:0 24px 40px;}
+  .rc-foot{text-align:center; font-size:12px; color:var(--gray-1); background:var(--navy); padding:32px 24px 40px; display:flex; flex-direction:column; align-items:center; gap:10px;}
+  .rc-foot-link{color:inherit; text-decoration:underline; text-underline-offset:2px;}
+  .rc-foot-link:hover{color:var(--white);}
   .rc-fade{animation:rc-up .4s ease both;}
   @keyframes rc-up{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
   @media (prefers-reduced-motion:reduce){ .rc-fade,.rc-spin{animation:none;} .rc-card:hover{transform:none;} }
+  .rc-video{position:relative; width:100%; padding-top:70%; border-radius:var(--radius-sm); overflow:hidden; background:#000; margin:0 0 24px;}
+  .rc-video iframe{position:absolute; inset:0; width:100%; height:100%; border:0;}
+  .rc-video-row{display:flex; align-items:center; gap:10px; margin:0 0 12px;}
+  .rc-video-badge{display:inline-block; flex-shrink:0; font-family:var(--font-mono); font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--on-accent); background:var(--accent); padding:5px 10px; border-radius:999px;}
+  .rc-create-layout{display:flex; align-items:flex-start; gap:24px;}
+  .rc-create-layout > .rc-panel{flex:1 1 460px; min-width:0;}
+  .rc-tutorial-aside{flex:1 1 460px; max-width:460px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow-sm);}
+  @media (max-width:960px){ .rc-create-layout{flex-direction:column;} .rc-tutorial-aside{max-width:100%; width:100%;} }
 `;
 
-function Seal() {
-  const ticks = Array.from({ length: 36 });
-  return (
-    <svg className="rc-seal" width="66" height="66" viewBox="0 0 66 66" aria-hidden="true">
-      <g transform="translate(33,33)">
-        {ticks.map((_, i) => {
-          const a = (i / ticks.length) * Math.PI * 2;
-          const r1 = 29, r2 = i % 3 === 0 ? 25 : 27;
-          return (
-            <line key={i} x1={Math.cos(a) * r1} y1={Math.sin(a) * r1}
-              x2={Math.cos(a) * r2} y2={Math.sin(a) * r2}
-              stroke="#2f56d3" strokeWidth="1" strokeLinecap="round" opacity="0.75" />
-          );
-        })}
-        <circle r="22" fill="none" stroke="#2f56d3" strokeWidth="1.5" />
-        <circle r="16" fill="#181b21" />
-        <path d="M -6 0 L -2 5 L 7 -6" fill="none" stroke="#2f56d3" strokeWidth="2.2"
-          strokeLinecap="round" strokeLinejoin="round" />
-      </g>
-    </svg>
-  );
-}
+// Cuánto esperamos, en segundo plano, a que la extensión de MetaMask
+// aparezca después de mandar a la persona a instalarla (ver crearWallet()).
+const INSTALL_POLL_MS = 1500;
+const INSTALL_TIMEOUT_MS = 180000; // 3 minutos
+
+// Usado para retomar el registro solo después de la recarga automática que
+// disparamos al volver de la pestaña de instalación (ver el useEffect de
+// "focus" y el de reanudación al montar, más abajo).
+const SESSION_KEY = "rc_pending_nombre";
+
+// Esta misma app se sirve tanto en /registro como en /registroASOBAN (ver
+// server.js) — mismo código y brandeo, solo cambia el texto "Certificados
+// NFT ___" y el valor "evento" que se manda al guardar el registro, para que
+// el panel admin pueda distinguir de qué módulo vino cada participante.
+const IS_ASOBAN = window.location.pathname.toLowerCase().includes("registroasoban");
+const EVENTO = IS_ASOBAN ? "asoban" : "foro";
+const EYEBROW_TEXT = IS_ASOBAN ? "Certificados NFT ASOBAN" : "Certificados NFT";
+const LOGO_COLOR = IS_ASOBAN ? logoAsobanColor : logoForoColor;
+const LOGO_ALT = IS_ASOBAN ? "ASOBAN — Asociación de Bancos Privados de Bolivia" : "Foro Activos Digitales Bolivia 2026";
 
 export default function App() {
-  // --- Hooks de Web3Auth y Wagmi ---
-  // No mostramos w3aError (el estado de error del hook): Web3Auth intenta
-  // reconectar en segundo plano al último conector usado (ej. MetaMask si el
-  // usuario lo probó antes) y esos fallos ambientales quedan ahí aunque no
-  // tengan nada que ver con el intento actual del usuario. Solo confiamos en
-  // nuestro propio "error", que fijamos cuando el connect() que NOSOTROS
-  // disparamos realmente falla.
-  const { connect, isConnected, loading: connecting } = useWeb3AuthConnect();
-  const { address: walletAddress } = useAccount();
-
   // --- Estado de la interfaz ---
   const [path, setPath] = useState(null);      // null | 'have' | 'create'
   const [nombre, setNombre] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [installing, setInstalling] = useState(false); // esperando a que aparezca la extensión
   const [done, setDone] = useState(null);       // null | { address, created }
   const [copied, setCopied] = useState(false);
-  const [pendingCreate, setPendingCreate] = useState(false);
   const [walletDetected, setWalletDetected] = useState(false);
   const [detecting, setDetecting] = useState(false);
+  const [showManualAddr, setShowManualAddr] = useState(false); // respaldo si la detección automática falla
+  const installPollRef = useRef(null);
 
   const isValidAddress = (a) => /^0x[a-fA-F0-9]{40}$/.test(a.trim());
+
+  useEffect(() => {
+    document.title = IS_ASOBAN
+      ? "Recibe tu certificado Web3 · Certificados NFT ASOBAN"
+      : "Recibe tu certificado Web3 · Blockfinity Advisors";
+  }, []);
+
+  // Limpia el temporizador de espera si la persona navega fuera de esta pantalla.
+  useEffect(() => {
+    return () => { if (installPollRef.current) clearInterval(installPollRef.current); };
+  }, []);
+
+  // Si esta carga de página es producto de la recarga automática (ver el
+  // useEffect de "focus" más abajo), retoma el registro sola: restaura el
+  // nombre que la persona ya había escrito y, si MetaMask ya está disponible,
+  // completa la conexión y el guardado sin pedirle que haga clic de nuevo.
+  useEffect(() => {
+    const pendienteNombre = sessionStorage.getItem(SESSION_KEY);
+    if (!pendienteNombre) return;
+    sessionStorage.removeItem(SESSION_KEY);
+    setNombre(pendienteNombre);
+    setPath("create");
+    if (window.ethereum) conectarYGuardar(pendienteNombre);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // El navegador no inyecta la extensión recién instalada en una pestaña que
+  // ya estaba abierta antes de la instalación (por eso el polling de abajo,
+  // por sí solo, nunca la detecta). Cuando la persona vuelve a esta pestaña
+  // después de instalar MetaMask en la pestaña nueva, si seguimos sin ver
+  // window.ethereum, recargamos una sola vez — la recarga sí hace que la
+  // extensión se inyecte, y el useEffect de arriba retoma el registro solo.
+  useEffect(() => {
+    if (!installing) return;
+    function handleFocus() {
+      if (!window.ethereum) {
+        sessionStorage.setItem(SESSION_KEY, nombre.trim());
+        window.location.reload();
+      }
+    }
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [installing, nombre]);
 
   // Al entrar a "Ya tengo wallet", revisamos en silencio (sin pedir permiso)
   // si el navegador ya tiene una wallet inyectada (MetaMask, Coinbase Wallet,
@@ -204,49 +265,92 @@ export default function App() {
     return data;
   }
 
-  // Cuando Web3Auth termina de conectar y ya hay dirección, guardamos y mostramos éxito.
-  useEffect(() => {
-    if (pendingCreate && isConnected && walletAddress) {
-      setPendingCreate(false);
-      (async () => {
-        setSaving(true);
-        try {
-          await guardarRegistro({ nombre: nombre.trim(), wallet: walletAddress, tipo: "creada" });
-          setDone({ address: walletAddress, created: true });
-        } catch (e) {
-          setError(e.message || "No se pudo guardar tu registro. Inténtalo de nuevo.");
-        }
-        setSaving(false);
-      })();
+  // Pide a MetaMask que cree/conecte una cuenta (abre el popup propio de la
+  // extensión) y, si sale bien, guarda el registro con esa dirección.
+  // Acepta el nombre por parámetro (en vez de leerlo solo del estado) porque
+  // el retomado automático tras la recarga lo llama en el mismo instante en
+  // que restaura "nombre", antes de que ese cambio de estado se refleje.
+  async function conectarYGuardar(nombreOverride) {
+    const nombreFinal = (nombreOverride ?? nombre).trim();
+    setSaving(true);
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const wallet = accounts && accounts[0];
+      if (!wallet) throw new Error("No se pudo obtener tu dirección de MetaMask.");
+      await guardarRegistro({ nombre: nombreFinal, wallet, tipo: "creada", evento: EVENTO });
+      setDone({ address: wallet, created: true });
+    } catch (e) {
+      setError(e.message || "No se pudo crear tu wallet. Inténtalo de nuevo.");
+      setShowManualAddr(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCreate, isConnected, walletAddress]);
+    setSaving(false);
+  }
 
-  async function iniciarCreacion() {
+  // Si el navegador ya tiene la extensión de MetaMask, le pedimos crear/
+  // conectar una cuenta directamente (se abre el popup propio de MetaMask).
+  // Si no la tiene, abrimos su página de descarga en una pestaña nueva y
+  // esperamos en esta misma pantalla a que aparezca para reconocerla sola,
+  // sin que la persona tenga que volver a hacer clic en nada.
+  async function crearWallet() {
     setError("");
     if (!nombre.trim()) {
       setError("Ingresa tu nombre completo antes de continuar.");
       return;
     }
-    // Si ya venía conectado de una sesión previa, usamos esa dirección directo.
-    if (isConnected && walletAddress) {
-      setSaving(true);
-      try {
-        await guardarRegistro({ nombre: nombre.trim(), wallet: walletAddress, tipo: "creada" });
-        setDone({ address: walletAddress, created: true });
-      } catch (e) {
-        setError(e.message || "No se pudo guardar tu registro. Inténtalo de nuevo.");
-      }
-      setSaving(false);
+
+    if (window.ethereum) {
+      await conectarYGuardar();
       return;
     }
-    setPendingCreate(true);
-    try {
-      await connect(); // abre el modal de Web3Auth (Google, correo, etc.)
-    } catch (e) {
-      setPendingCreate(false);
-      setError("No se pudo crear la wallet. Inténtalo de nuevo.");
+
+    window.open("https://metamask.io/download/", "_blank", "noopener");
+    setInstalling(true);
+    let elapsed = 0;
+    installPollRef.current = setInterval(() => {
+      elapsed += INSTALL_POLL_MS;
+      if (window.ethereum) {
+        clearInterval(installPollRef.current);
+        installPollRef.current = null;
+        setInstalling(false);
+        conectarYGuardar();
+        return;
+      }
+      if (elapsed >= INSTALL_TIMEOUT_MS) {
+        clearInterval(installPollRef.current);
+        installPollRef.current = null;
+        setInstalling(false);
+        setError("No detectamos MetaMask todavía. Si ya terminaste de instalarla, vuelve a hacer clic, o pega tu dirección manualmente abajo.");
+        setShowManualAddr(true);
+      }
+    }, INSTALL_POLL_MS);
+  }
+
+  function cancelarEspera() {
+    if (installPollRef.current) clearInterval(installPollRef.current);
+    installPollRef.current = null;
+    setInstalling(false);
+  }
+
+  // Respaldo manual dentro de "No tengo wallet": si ya creó su cuenta en
+  // MetaMask pero no la detectamos sola, puede pegar la dirección aquí.
+  async function submitCreateManual() {
+    if (!nombre.trim()) {
+      setError("Ingresa tu nombre completo.");
+      return;
     }
+    if (!isValidAddress(address)) {
+      setError("Ingresa una dirección válida: empieza con 0x y tiene 42 caracteres.");
+      return;
+    }
+    setError("");
+    setSaving(true);
+    try {
+      await guardarRegistro({ nombre: nombre.trim(), wallet: address.trim(), tipo: "creada", evento: EVENTO });
+      setDone({ address: address.trim(), created: true });
+    } catch (e) {
+      setError(e.message || "No se pudo guardar tu registro. Inténtalo de nuevo.");
+    }
+    setSaving(false);
   }
 
   async function submitHave() {
@@ -261,7 +365,7 @@ export default function App() {
     setError("");
     setSaving(true);
     try {
-      await guardarRegistro({ nombre: nombre.trim(), wallet: address.trim(), tipo: "existente" });
+      await guardarRegistro({ nombre: nombre.trim(), wallet: address.trim(), tipo: "existente", evento: EVENTO });
       setDone({ address: address.trim(), created: false });
     } catch (e) {
       setError(e.message || "No se pudo guardar tu registro. Inténtalo de nuevo.");
@@ -269,21 +373,12 @@ export default function App() {
     setSaving(false);
   }
 
-  async function reset() {
-    // El SDK de Web3Auth no soporta bien desconectar y volver a conectar
-    // dentro de la MISMA carga de página: su modal interno puede quedar en
-    // un estado corrupto (reaparece sin loguear a nadie, no dispara isConnected).
-    // Por eso, si la wallet se creó vía Web3Auth, forzamos una recarga limpia
-    // en vez de solo resetear el estado de React — así la siguiente persona
-    // (o la misma, registrando otra) arranca con el SDK completamente fresco.
-    if (done && done.created) {
-      window.location.href = window.location.pathname;
-      return;
-    }
-    // Camino "existente" (sin Web3Auth): un reset normal alcanza.
+  function reset() {
+    if (installPollRef.current) clearInterval(installPollRef.current);
+    installPollRef.current = null;
     setPath(null); setNombre(""); setAddress(""); setError("");
-    setSaving(false); setDone(null); setCopied(false); setPendingCreate(false);
-    setWalletDetected(false); setDetecting(false);
+    setSaving(false); setInstalling(false); setDone(null); setCopied(false);
+    setWalletDetected(false); setDetecting(false); setShowManualAddr(false);
   }
 
   function copyAddress() {
@@ -294,7 +389,7 @@ export default function App() {
     } catch (e) { /* sin portapapeles */ }
   }
 
-  const creando = connecting || pendingCreate || saving;
+  const creando = installing || saving;
 
   return (
     <div className="rc-root">
@@ -302,20 +397,34 @@ export default function App() {
 
       <header className="rc-topbar">
         <div className="rc-brand">
-          <span className="rc-logo">CN</span>
-          <span>Blockfinity Advisors</span>
+          {IS_ASOBAN ? (
+            <>
+              <img src={logoAsobanIconWhite} alt="" className="rc-logo-img rc-logo-img--asoban" />
+              <div className="rc-brand-text">
+                <span className="rc-brand-name">ASOBAN</span>
+                <span className="rc-brand-tagline">Asociación de Bancos Privados de Bolivia</span>
+              </div>
+              <span className="rc-brand-sep" />
+              <img src={logoBlockfinityWhite} alt="Blockfinity Advisors" className="rc-logo-img rc-logo-img--blockfinity" />
+            </>
+          ) : (
+            <>
+              <img src={logoCablockWhite} alt="Cámara Boliviana de Blockchain (CABLOCK)" className="rc-logo-img" />
+              <span className="rc-brand-sep" />
+              <img src={logoForoWhite} alt="Foro Activos Digitales Bolivia 2026" className="rc-logo-img" />
+            </>
+          )}
         </div>
-        <div className="rc-tag">Certificados NFT</div>
       </header>
 
-      <main className="rc-shell">
+      <main className={"rc-shell" + (path === "create" && !done ? " rc-shell--wide" : "")}>
         {done ? (
           <section className="rc-panel rc-fade" aria-live="polite">
             <div className="rc-ok-badge"><IconCheck /></div>
             <h2>{done.created ? "Tu wallet está lista" : "Todo listo"}</h2>
             <p className="lead">
               {done.created
-                ? "Creamos tu wallet y registramos tu dirección. Ahí recibirás tu certificado Web3."
+                ? "Creamos tu wallet en MetaMask y registramos tu dirección. Ahí recibirás tu certificado Web3."
                 : "Registramos tu dirección. Ahí recibirás tu certificado Web3."}
             </p>
 
@@ -327,10 +436,15 @@ export default function App() {
               </button>
             </div>
 
+            <div className="rc-note">
+              <IconClock />
+              <span>La generación de tu certificado no es inmediata: tu NFT llegará a esta wallet dentro de 2 a 3 días hábiles.</span>
+            </div>
+
             {done.created && (
               <div className="rc-note">
                 <IconShield />
-                <span>Podrás volver a entrar a tu wallet con el mismo correo cuando quieras.</span>
+                <span>Guarda bien tu frase de recuperación de MetaMask: es la única forma de volver a acceder a esta wallet si cambias de computadora o navegador.</span>
               </div>
             )}
 
@@ -338,8 +452,8 @@ export default function App() {
           </section>
         ) : path === null ? (
           <div className="rc-fade">
-            <p className="rc-eyebrow">Certificados NFT</p>
-            <Seal />
+            <p className="rc-eyebrow">{EYEBROW_TEXT}</p>
+            <img src={LOGO_COLOR} alt={LOGO_ALT} className={"rc-seal" + (IS_ASOBAN ? " rc-seal--asoban" : "")} />
             <h1 className="rc-title">Recibe tu certificado Web3</h1>
             <p className="rc-sub">
               Tu certificado será un documento digital (NFT) que vive en la blockchain, a tu
@@ -356,7 +470,7 @@ export default function App() {
               <button className="rc-card" onClick={() => { setPath("create"); setError(""); }}>
                 <div className="rc-ico"><IconSparkles /></div>
                 <h3>No, créala por mí</h3>
-                <p>La creamos en segundos, solo con tu correo. Sin frases secretas.</p>
+                <p>Te ayudamos a crearla con MetaMask en un par de minutos.</p>
               </button>
             </div>
           </div>
@@ -395,33 +509,73 @@ export default function App() {
             </button>
           </section>
         ) : (
-          <section className="rc-panel rc-fade">
-            <button className="rc-back" onClick={reset}>← Volver</button>
-            <h2>Crea tu wallet</h2>
-            <p className="lead">
-              Al continuar se abrirá una ventana segura donde inicias sesión con tu correo o tu
-              cuenta de Google. En segundos tendrás tu wallet, sin instalar nada ni recordar
-              frases secretas.
-            </p>
+          <div className="rc-create-layout rc-fade">
+            <section className="rc-panel">
+              <button className="rc-back" onClick={reset}>← Volver</button>
+              <h2>Crea tu wallet</h2>
+              <p className="lead">
+                Al continuar te pediremos crear o conectar una cuenta en MetaMask. Si todavía no
+                tienes la extensión instalada, abriremos su página de descarga en una pestaña nueva
+                — apenas termines de instalarla, la reconoceremos automáticamente aquí mismo.
+              </p>
 
-            <div className="rc-field">
-              <label className="rc-label" htmlFor="rc-nombre-crear">Nombre completo</label>
-              <input id="rc-nombre-crear" className="rc-input" placeholder="Escríbelo tal como quieres que aparezca en tu certificado"
-                value={nombre} onChange={(e) => { setNombre(e.target.value); setError(""); }}
-                autoComplete="off" />
-            </div>
+              <div className="rc-field">
+                <label className="rc-label" htmlFor="rc-nombre-crear">Nombre completo</label>
+                <input id="rc-nombre-crear" className="rc-input" placeholder="Escríbelo tal como quieres que aparezca en tu certificado"
+                  value={nombre} onChange={(e) => { setNombre(e.target.value); setError(""); }}
+                  autoComplete="off" />
+              </div>
 
-            <button className="rc-btn" onClick={iniciarCreacion} disabled={creando}>
-              {creando ? <><span className="rc-spin" /> Creando tu wallet…</> : "Crear mi wallet"}
-            </button>
+              <button className="rc-btn" onClick={crearWallet} disabled={creando}>
+                {installing
+                  ? <><span className="rc-spin" /> Esperando a que instales MetaMask…</>
+                  : saving
+                    ? <><span className="rc-spin" /> Creando tu wallet…</>
+                    : "Crear mi wallet en MetaMask"}
+              </button>
 
-            {error && <p className="rc-error">{error}</p>}
-          </section>
+              {installing && (
+                <button type="button" className="rc-back" style={{ display: "block", margin: "14px auto 0" }} onClick={cancelarEspera}>
+                  Cancelar
+                </button>
+              )}
+
+              {error && <p className="rc-error">{error}</p>}
+
+              {showManualAddr && (
+                <div className="rc-field" style={{ marginTop: 20, marginBottom: 0 }}>
+                  <label className="rc-label" htmlFor="rc-addr-crear">¿Ya la creaste? Pega aquí tu dirección</label>
+                  <input id="rc-addr-crear" className="rc-input mono" placeholder="0x..."
+                    value={address}
+                    onChange={(e) => { setAddress(e.target.value); setError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && submitCreateManual()} autoComplete="off" />
+                  <button type="button" className="rc-btn ghost" style={{ marginTop: 12 }} onClick={submitCreateManual} disabled={saving}>
+                    {saving ? <><span className="rc-spin rc-spin--dark" /> Registrando…</> : "Registrar esta dirección"}
+                  </button>
+                </div>
+              )}
+            </section>
+
+            <aside className="rc-tutorial-aside">
+              <div className="rc-video-row">
+                <span className="rc-video-badge">Tutorial</span>
+                <span className="rc-label" style={{ margin: 0 }}>¿No sabes cómo?</span>
+              </div>
+              <div className="rc-video" style={{ margin: 0 }}>
+                <iframe
+                  src="https://drive.google.com/file/d/1fSbIMM9m6RrctzjhcVGvPYvA14zepffK/preview"
+                  title="Tutorial: cómo crear tu wallet en MetaMask"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </aside>
+          </div>
         )}
       </main>
 
       <footer className="rc-foot">
-        Blockfinity Advisors · Los certificados se emiten como NFT en la blockchain.
+        <span>Created by <a href="https://www.blockfinityadvisors.com/" target="_blank" rel="noopener noreferrer" className="rc-foot-link">Blockfinity Advisors</a></span>
       </footer>
     </div>
   );

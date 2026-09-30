@@ -23,29 +23,26 @@ if (!JWT_SECRET) {
   process.exit(1);
 }
 
-app.use(express.json());
+// El límite por defecto de Express (100kb) se queda corto en /masivo/emitir,
+// que recibe TODOS los certificados ya preparados (con sus URLs de IPFS) en
+// un solo JSON — con un lote real de cientos de alumnos supera ese límite.
+app.use(express.json({ limit: '15mb' }));
 
 // Página pública de auto-registro de wallet (React + Vite, compilada con
 // "npm run build" en registro-wallet/). Va antes del estático del panel
 // admin para que /registro se resuelva aquí primero.
-const registroDist = path.join(__dirname, '..', 'registro-wallet', 'dist');
-app.use('/registro', express.static(registroDist));
+app.use('/registro', express.static(path.join(__dirname, '..', 'registro-wallet', 'dist')));
 
-// Fallback SPA: cualquier ruta bajo /registro que no sea un archivo estático
-// (ej. /registro, /registro/algo) devuelve el index.html compilado. Evita el
-// "Cannot GET /registro" cuando se navega directo a esa URL. Si dist/index.html
-// no existe (build no ejecutado), pasa al siguiente handler en vez de romper.
-app.get(['/registro', '/registro/*'], (req, res, next) => {
-  res.sendFile(path.join(registroDist, 'index.html'), (err) => {
-    if (err) next();
-  });
-});
+// Mismo build que /registro, servido también bajo /registroASOBAN: es la
+// misma app (mismo código, mismo brandeo), que detecta esta ruta en tiempo
+// de ejecución para mostrar "Certificados NFT ASOBAN" y marcar sus registros
+// con evento="asoban" (ver registro-wallet/src/App.jsx).
+app.use('/registroASOBAN', express.static(path.join(__dirname, '..', 'registro-wallet', 'dist')));
 
-app.use(
-  express.static(path.join(__dirname, '..', 'frontend'), {
-    index: 'Certificados NFT.html',
-  })
-);
+// El nombre del archivo se cambió a "index.html" (era "Certificados NFT.html",
+// con espacio y mayúsculas) para evitar problemas al desplegar en Linux
+// (case-sensitive) y usar el índice por defecto de express.static.
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Todas las rutas de certificados quedan protegidas: solo un usuario con JWT válido puede usarlas.
 app.use('/api/certificados', requireAuth, certificadosRouter);

@@ -4,26 +4,21 @@
   "description": "Backend para plataforma de emisión de certificados NFT",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "seed": "node seed.js"
+    "start": "node --experimental-sqlite server.js",
+    "seed": "node --experimental-sqlite seed.js"
   },
   "dependencies": {
     "axios": "^1.7.0",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3-multiple-ciphers": "^12.11.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "form-data": "^4.0.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "pdf-lib": "^1.17.1",
-    "pdf2pic": "^3.2.0",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^6.0.1",
+    "pdf-poppler": "^0.2.3",
+    "sharp": "^0.35.3",
     "web3": "^4.10.0",
     "xlsx": "^0.18.5"
-  },
-  "engines": {
-    "node": ">=20.0.0"
   }
 }

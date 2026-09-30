@@ -3,9 +3,21 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
-//const pdfPoppler = require('pdf-poppler');
-// Por esto:
-const { fromPath } = require('pdf2pic');
+const { execFile } = require('child_process');
+const sharp = require('sharp');
+
+// Ruta al ejecutable pdftoppm según el sistema operativo:
+// - Windows (desarrollo local): usa el binario que ya viene incluido dentro
+//   de node_modules/pdf-poppler, sin necesidad de instalar nada aparte.
+// - Linux/Mac (servidor real): usa el pdftoppm del sistema, instalado con
+//   el paquete "poppler-utils" (ej. `apt install poppler-utils` en Ubuntu).
+//   pdftoppm es el conversor más básico de poppler y viene incluido en
+//   prácticamente cualquier instalación, a diferencia de pdftocairo.
+function resolvePdftoppmPath() {
+  if (process.platform !== 'win32') return 'pdftoppm';
+  const popplerPkgPath = require.resolve('pdf-poppler/package.json');
+  return path.join(path.dirname(popplerPkgPath), 'lib', 'win', 'poppler-0.51', 'bin', 'pdftoppm.exe');
+}
 
 const rpcUrl = process.env.RPC_URL?.trim();
 const universityWallet = process.env.UNIVERSITY_WALLET?.trim();
@@ -347,32 +359,52 @@ async function validateNetwork() {
 
 // Convierte la primera página de un PDF a una imagen PNG (se usa como
 // "image" del NFT, ya que wallets y marketplaces esperan una imagen).
+// MetaMask y la mayoría de wallets/marketplaces muestran esa imagen en una
+// miniatura CUADRADA (1:1) recortando lo que sobre para llenarla — sin
+// importar la resolución, solo la proporción. Como nuestro certificado es
+// más ancho que alto (A4 horizontal), lo centramos sobre un lienzo blanco
+// cuadrado para que se vea completo en esas miniaturas en vez de recortado.
 async function generatePdfPreview(pdfPath) {
   const outputDir = path.dirname(pdfPath);
-  const baseName = path.parse(pdfPath).name;
-  const outputPrefix = `${baseName}-preview`;
+  const outputPrefix = `${path.parse(pdfPath).name}-preview`;
+  const outputBase = path.join(outputDir, outputPrefix);
 
-  const options = {
-    density: 100,
-    saveFilename: outputPrefix,
-    savePath: outputDir,
-    format: 'png',
-    width: 800,
-    height: 600
-  };
+  await new Promise((resolve, reject) => {
+    execFile(
+      resolvePdftoppmPath(),
+      ['-png', '-scale-to', '1024', '-f', '1', '-l', '1', pdfPath, outputBase],
+      (error, stdout, stderr) => {
+        if (error) return reject(new Error(`pdftoppm falló: ${stderr || error.message}`));
+        resolve();
+      }
+    );
+  });
 
-  const storeAsImage = fromPath(pdfPath, options);
-  
-  // Convierte la página 1
-  await storeAsImage(1, { responseType: 'image' });
+  const renderedPath = `${outputBase}-1.png`;
 
-  const previewPath = path.join(outputDir, `${outputPrefix}.1.png`);
-
-  if (!fs.existsSync(previewPath)) {
+  if (!fs.existsSync(renderedPath)) {
     throw new Error('No se pudo generar la imagen preview del PDF');
   }
 
-  return previewPath;
+  const squarePath = path.join(outputDir, `${outputPrefix}-square.png`);
+  const { width, height } = await sharp(renderedPath).metadata();
+  const size = Math.max(width, height);
+
+  await sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 255, g: 255, b: 255, alpha: 1 },
+    },
+  })
+    .composite([{ input: renderedPath, gravity: 'center' }])
+    .png()
+    .toFile(squarePath);
+
+  fs.unlinkSync(renderedPath);
+
+  return squarePath;
 }
 
 // Sube un archivo (PDF o PNG) a Pinata/IPFS y devuelve su CID (hash de contenido).

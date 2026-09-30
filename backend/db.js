@@ -1,12 +1,8 @@
-// Reemplazamos 'node:sqlite' por un driver estable compatible con Linux y Windows
-const Database = require('better-sqlite3-multiple-ciphers');
+// SQLite integrado en Node.js 22+ — sin dependencias nativas
+const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 
-// Inicializamos la base de datos
-const db = new Database(path.join(__dirname, 'database.sqlite'));
-
-// Habilitar claves foráneas (buena práctica en SQLite)
-db.pragma('foreign_keys = ON');
+const db = new DatabaseSync(path.join(__dirname, 'database.sqlite'));
 
 // Tabla de usuarios administradores del panel (login, registro).
 db.exec(`
@@ -61,8 +57,18 @@ db.exec(`
     nombre         TEXT    NOT NULL,
     wallet         TEXT    NOT NULL,
     tipo           TEXT    NOT NULL,
+    evento         TEXT    NOT NULL DEFAULT 'foro',
     creado_en      TEXT    DEFAULT (datetime('now'))
   )
 `);
+
+// Migración: agrega la columna "evento" (distingue de qué módulo público vino
+// el registro, ej. "foro" o "asoban") a bases de datos creadas antes de este
+// cambio. Falla en silencio si la columna ya existe.
+try {
+  db.exec(`ALTER TABLE participantes ADD COLUMN evento TEXT NOT NULL DEFAULT 'foro'`);
+} catch (error) {
+  if (!/duplicate column/i.test(error.message)) throw error;
+}
 
 module.exports = db;

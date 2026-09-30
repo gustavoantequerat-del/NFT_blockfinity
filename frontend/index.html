@@ -540,14 +540,30 @@
           <label class="label" for="part-add-wallet">Wallet</label>
           <input class="input mono" id="part-add-wallet" type="text" placeholder="0x…" />
         </div>
+        <div class="field" style="margin-bottom:0;min-width:140px;">
+          <label class="label" for="part-add-evento">Evento</label>
+          <select class="input" id="part-add-evento">
+            <option value="foro">Foro</option>
+            <option value="asoban">ASOBAN</option>
+          </select>
+        </div>
         <button class="btn btn--primary" id="part-add-btn" type="button" style="height:42px;">Agregar</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <label class="label" for="participantes-filter-evento" style="margin:0;">Mostrar</label>
+        <select class="input" id="participantes-filter-evento" style="width:auto;height:34px;padding:0 10px;">
+          <option value="todos">Todos</option>
+          <option value="foro">Foro</option>
+          <option value="asoban">ASOBAN</option>
+        </select>
       </div>
 
       <div id="participantes-empty" class="helper" style="display:none;margin-bottom:14px;">Todavía no hay participantes registrados.</div>
 
       <div class="card" style="overflow:auto;max-height:340px;">
         <table class="table">
-          <thead><tr><th>Nombre</th><th>Wallet</th><th>Origen</th><th>Fecha</th><th></th></tr></thead>
+          <thead><tr><th style="width:36px;"><input type="checkbox" id="participantes-select-all" /></th><th>Nombre</th><th>Wallet</th><th>Origen</th><th>Evento</th><th>Fecha</th><th></th></tr></thead>
           <tbody id="participantes-table-body"></tbody>
         </table>
       </div>
