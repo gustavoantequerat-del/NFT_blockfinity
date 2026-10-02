@@ -37,7 +37,7 @@ function Pintar_Estudiantes() {
     const Valido = Es_Wallet_Valida(E.wallet);
     return `<tr class="${Valido ? '' : 'fila-error'}"><td><b>${Escapar(E.nombre)}</b></td><td>${Escapar(E.correo || '—')}</td>
       <td class="mono">${Escapar(Acortar(E.wallet))}</td><td>${Valido ? Etiqueta_Estado('lista') : '<span class="etiqueta etiqueta--error">wallet pendiente</span>'}</td>
-      <td class="derecha"><a class="enlace" data-accion="Quitar_Estudiante" data-id="${E.id}">Quitar</a></td></tr>`;
+      <td class="derecha">${E.usuario_id ? `<a class="enlace" data-accion="Enlace_Recuperacion" data-id="${E.id}">Enlace de contraseña</a> · ` : ''}<a class="enlace" data-accion="Quitar_Estudiante" data-id="${E.id}">Quitar</a></td></tr>`;
   }).join('') || Fila_Vacia(5, 'Agrega estudiantes para crear un lote.');
   Poner_Texto('costo-cantidad', Validos);
   Poner_Texto('costo-unitario', Dinero(Estado.Precio_Unitario));
@@ -83,9 +83,17 @@ async function Solicitar_Lote(Formulario) {
   Mostrar_Pantalla('tablero');
 }
 
+// Si el estudiante olvidó su contraseña y no le llega el correo, la
+// institución genera el enlace y se lo envía por otro medio.
+async function Enlace_Recuperacion(Nodo) {
+  const { enlace: Enlace } = await Llamar_Api(`/api/panel/estudiantes/${Nodo.dataset.id}/enlace-recuperacion`, { json: {} });
+  await navigator.clipboard?.writeText(Enlace).catch(() => {});
+  prompt('Enlace copiado. Envíaselo al estudiante (válido 1 hora, un solo uso):', Enlace);
+}
+
 function Copiar_Ruta_Registro() {
   navigator.clipboard?.writeText(Por_Id('tab-ruta').value).then(() => Mostrar_Aviso('Enlace copiado.'));
 }
 
-export const Acciones = { Quitar_Estudiante, Copiar_Ruta_Registro };
+export const Acciones = { Quitar_Estudiante, Copiar_Ruta_Registro, Enlace_Recuperacion };
 export const Formularios = { Agregar_Estudiante, Solicitar_Lote };

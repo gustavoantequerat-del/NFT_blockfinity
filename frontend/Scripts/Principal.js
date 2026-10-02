@@ -8,11 +8,13 @@ import * as Panel_Institucion from './Panel_Institucion.js';
 import * as Estudiante from './Estudiante.js';
 import * as Verificacion from './Verificacion.js';
 import * as Registro_Estudiante from './Registro_Estudiante.js';
+import * as Camara_Qr from './Camara_Qr.js';
+import * as Invitado from './Invitado.js';
 import { Leer_Token } from './Api.js';
 import { Mostrar_Pantalla } from './Navegacion.js';
 import { Mostrar_Aviso } from './Utilidades.js';
 
-const Modulos = [Acceso, Red, Instituciones, Asistente_Emision, Panel_Institucion, Estudiante, Verificacion, Registro_Estudiante];
+const Modulos = [Acceso, Red, Instituciones, Asistente_Emision, Panel_Institucion, Estudiante, Verificacion, Registro_Estudiante, Camara_Qr];
 const Acciones = Object.assign({ Alternar_Menu: () => document.body.classList.toggle('menu-abierto') }, ...Modulos.map((M) => M.Acciones || {}));
 const Formularios = Object.assign({}, ...Modulos.map((M) => M.Formularios || {}));
 const Archivos = Object.assign({}, ...Modulos.map((M) => M.Archivos || {}));
@@ -66,20 +68,27 @@ document.addEventListener('submit', async (Evento) => {
   if (Boton) Boton.disabled = false;
 });
 
-// Rutas: /login y /admin (acceso), /registro_<institución>, /verificar y
-// la raíz con ?token=… (QR del certificado).
+// Rutas: /login y /admin (acceso), /registro y /registro_<institución>,
+// /invitado (landing pública), /verificar y la raíz con ?token=… (QR).
+// Sin sesión, el QR y /verificar llevan a la landing de invitados.
 async function Arrancar() {
   if (Registro_Estudiante.Es_Ruta_Registro()) return Registro_Estudiante.Arrancar_Registro_Estudiante();
+  if (Invitado.Es_Ruta_Invitado()) return Invitado.Arrancar_Invitado();
 
   const Parametros = new URLSearchParams(window.location.search);
   const Viene_Del_Qr = Parametros.get('token') || Parametros.get('cid');
   if (Viene_Del_Qr || window.location.pathname.startsWith('/verificar')) {
-    if (Leer_Token()) await Acceso.Entrar_A_La_App('verificar').catch(() => Mostrar_Pantalla('verificar'));
-    else Mostrar_Pantalla('verificar');
-    if (!Viene_Del_Qr) return;
+    const Consulta = Viene_Del_Qr ? window.location.href : null;
+    if (!Leer_Token()) return Invitado.Arrancar_Invitado(Consulta);
+    try {
+      await Acceso.Entrar_A_La_App('verificar');
+    } catch (_) {
+      return Invitado.Arrancar_Invitado(Consulta);
+    }
+    if (!Consulta) return;
     document.getElementById('ver-consulta').value = Viene_Del_Qr;
     document.getElementById('ver-red').value = Parametros.get('red') || '';
-    return Verificacion.Verificar(window.location.href);
+    return Verificacion.Verificar(Consulta);
   }
   return Acceso.Arrancar_Acceso();
 }

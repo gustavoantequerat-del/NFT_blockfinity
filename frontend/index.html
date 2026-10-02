@@ -16,6 +16,7 @@
 <link rel="stylesheet" href="/Estilos/Certificados.css" />
 <link rel="stylesheet" href="/Estilos/Verificacion.css" />
 <link rel="stylesheet" href="/Estilos/Registro_Estudiante.css" />
+<link rel="stylesheet" href="/Estilos/Invitado.css" />
 </head>
 <body>
 
@@ -39,19 +40,39 @@
     </aside>
 
     <main class="acceso-principal">
-      <form class="acceso-tarjeta" data-formulario="Iniciar_Sesion">
+      <div class="acceso-tarjeta">
         <img class="acceso-logo-movil" src="/Recursos/Logos/Logo_Blockfinity_Gris.png" alt="Blockfinity Advisors" />
-        <h1 id="acceso-titulo">Iniciar sesión</h1>
-        <p class="sub" id="acceso-subtitulo">Estudiantes e instituciones: entra con la cuenta de tu institución.</p>
-        <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" placeholder="nombre@institucion.edu" required /></label>
-        <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" autocomplete="current-password" placeholder="Tu contraseña" required /></label>
-        <button class="boton boton--primario boton--bloque boton--grande" type="submit">Iniciar sesión</button>
-        <div class="acceso-enlaces">
-          <a class="enlace enlace--suave" href="/verificar">Verificar un certificado sin iniciar sesión →</a>
-          <p class="ayuda" data-solo-portal="usuario">¿Eres estudiante y no tienes cuenta? Regístrate con el enlace que te compartió tu institución.</p>
-          <p class="ayuda" data-solo-portal="usuario" id="acceso-contacto" hidden></p>
-        </div>
-      </form>
+
+        <form data-panel-acceso="entrar" data-formulario="Iniciar_Sesion">
+          <h1 id="acceso-titulo">Iniciar sesión</h1>
+          <p class="sub" id="acceso-subtitulo">Estudiantes e instituciones: entra con la cuenta de tu institución.</p>
+          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" placeholder="nombre@institucion.edu" required /></label>
+          <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" autocomplete="current-password" placeholder="Tu contraseña" required /></label>
+          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Iniciar sesión</button>
+          <div class="acceso-enlaces">
+            <a class="enlace" data-accion="Mostrar_Panel_Acceso" data-panel="olvide">¿Olvidaste tu contraseña?</a>
+            <a class="enlace enlace--suave" href="/invitado">Comprobar un certificado sin iniciar sesión →</a>
+            <p class="ayuda" data-solo-portal="usuario">¿Eres estudiante y no tienes cuenta? Regístrate con el enlace que te compartió tu institución.</p>
+            <p class="ayuda" data-solo-portal="usuario" id="acceso-contacto" hidden></p>
+          </div>
+        </form>
+
+        <form data-panel-acceso="olvide" data-formulario="Pedir_Recuperacion" hidden>
+          <h1>Recuperar contraseña</h1>
+          <p class="sub">Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva (válido 1 hora).</p>
+          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" required /></label>
+          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Enviar enlace</button>
+          <div class="acceso-enlaces"><a class="enlace" data-accion="Mostrar_Panel_Acceso" data-panel="entrar">← Volver a iniciar sesión</a></div>
+        </form>
+
+        <form data-panel-acceso="restablecer" data-formulario="Restablecer_Contrasena" hidden>
+          <h1>Nueva contraseña</h1>
+          <p class="sub">Elige una contraseña nueva para tu cuenta.</p>
+          <label class="campo"><span>Contraseña nueva</span><input class="entrada" name="contrasena" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required /></label>
+          <label class="campo"><span>Repite la contraseña</span><input class="entrada" name="repetir" type="password" minlength="8" autocomplete="new-password" required /></label>
+          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Guardar contraseña</button>
+        </form>
+      </div>
     </main>
   </div>
 </section>
@@ -103,6 +124,46 @@
       <a class="boton boton--bloque" href="/login">Ir a iniciar sesión</a>
     </section>
   </main>
+
+  <footer class="registro-pie">Certificados NFT por <a href="https://www.blockfinityadvisors.com/" target="_blank" rel="noopener noreferrer">Blockfinity Advisors</a></footer>
+</section>
+
+<!-- =============================================================
+     VISTA · INVITADO (/invitado): landing del certificado NFT + Comprobar
+     ============================================================= -->
+<section class="vista invitado" id="vista-invitado">
+  <header class="invitado-barra">
+    <img class="invitado-logo" src="/Recursos/Logos/Logo_Blockfinity_Blanco.png" alt="Blockfinity Advisors" />
+    <span class="espaciador"></span>
+    <a class="boton boton--chico" href="#comprobar">Comprobar</a>
+    <a class="enlace invitado-entrar" href="/login">Iniciar sesión</a>
+  </header>
+
+  <section class="invitado-portada">
+    <p class="invitado-antetitulo">Certificados NFT</p>
+    <h1>Certificados académicos que se verifican en segundos</h1>
+    <p>Cada certificado es un NFT en la wallet de su titular y su PDF lleva un QR único. Escanéalo o escribe su identificador para comprobar que es auténtico, directamente contra la blockchain.</p>
+    <a class="boton boton--primario boton--grande" href="#comprobar">Comprobar un certificado</a>
+  </section>
+
+  <section class="invitado-pasos">
+    <div><b>1</b><h3>Emitido por la institución</h3><p>La institución emite el certificado y lo envía a la wallet del estudiante como NFT.</p></div>
+    <div><b>2</b><h3>QR en el PDF</h3><p>El PDF lleva un QR con el número de token y la huella (CID) del documento en IPFS.</p></div>
+    <div><b>3</b><h3>Verificable por cualquiera</h3><p>Al escanearlo se consulta el contrato: si el token existe y su huella coincide, es válido.</p></div>
+  </section>
+
+  <section class="invitado-comprobar" id="comprobar">
+    <h2>Comprobar</h2>
+    <p class="ayuda">Escanea el QR con la cámara o escribe el Token ID, el CID o la URL del QR.</p>
+    <form class="tarjeta relleno separado" data-formulario="Verificar_Certificado">
+      <div class="buscador">
+        <input class="entrada mono" name="consulta" placeholder="12 · Qm… / bafy… · URL del QR" />
+        <button class="boton" type="button" data-accion="Escanear_Qr">📷 Cámara</button>
+        <button class="boton boton--primario boton--grande" type="submit">Comprobar</button>
+      </div>
+    </form>
+    <div data-resultado-verificacion></div>
+  </section>
 
   <footer class="registro-pie">Certificados NFT por <a href="https://www.blockfinityadvisors.com/" target="_blank" rel="noopener noreferrer">Blockfinity Advisors</a></footer>
 </section>
@@ -249,9 +310,10 @@
                 <label class="campo"><span>Recargar (USD, negativo para descontar)</span><input class="entrada mono" name="monto" type="number" step="0.01" placeholder="100.00" required /></label>
                 <div class="acciones-derecha"><button class="boton" type="submit">Aplicar</button></div>
               </form>
-              <div class="tarjeta relleno separado zona-peligro">
+              <div class="banda banda--info" id="aviso-principal" hidden>Esta es la institución principal: su registro está en <span class="mono">/registro</span> y recibe a los estudiantes y certificados de las instituciones eliminadas. No se puede eliminar.</div>
+              <div class="tarjeta relleno separado zona-peligro" id="zona-eliminar">
                 <h2>Eliminar institución</h2>
-                <p class="ayuda separado">Borra la institución, su ruta de registro, su lista de estudiantes, sus lotes y todas sus cuentas (admin institucional y estudiantes). Los NFT ya emitidos siguen en blockchain.</p>
+                <p class="ayuda separado">Borra la institución, su ruta de registro, su cuenta de admin institucional y sus lotes. Sus estudiantes (con sus cuentas) y sus certificados pasan a Blockfinity Advisors, así siguen viendo sus NFT.</p>
                 <button class="boton boton--peligro" type="button" data-accion="Eliminar_Institucion">Eliminar institución</button>
               </div>
             </div>
@@ -501,45 +563,21 @@
         <!-- ================= VERIFICACIÓN PÚBLICA ================= -->
         <div class="pantalla" data-pantalla="verificar">
           <div class="cabecera fila-cabecera">
-            <div><h1>Verificación pública</h1><p>Cualquier persona puede comprobar un certificado, sin iniciar sesión ni conectar una wallet.</p></div>
+            <div><h1>Verificar certificado</h1><p>Comprueba si un certificado es válido y a quién pertenece, escaneando su QR o escribiendo su identificador.</p></div>
             <a class="enlace" href="/login" data-solo-invitado>Iniciar sesión →</a>
           </div>
           <form class="tarjeta relleno separado" data-formulario="Verificar_Certificado">
             <h2>Buscar el certificado</h2>
-            <p class="ayuda">Escanea el QR del PDF o escribe el Token ID, el CID de IPFS, el hash de la transacción o la wallet.</p>
+            <p class="ayuda">Escanea el QR del PDF con la cámara o escribe el Token ID, el CID de IPFS, el hash de la transacción o la wallet.</p>
             <div class="buscador">
               <input class="entrada mono" name="consulta" id="ver-consulta" placeholder="12 · Qm… / bafy… · URL del QR" />
               <select class="entrada entrada--corta" name="red" id="ver-red"><option value="">Red activa</option><option value="test">Test</option><option value="main">Main</option></select>
+              <button class="boton" type="button" data-accion="Escanear_Qr">📷 Cámara</button>
               <button class="boton boton--primario boton--grande" type="submit">Verificar</button>
             </div>
           </form>
-
-          <div class="vacio" id="ver-espera"><b>Sin resultados todavía</b><span>El resultado de la verificación aparecerá aquí.</span></div>
-
-          <div class="resultado resultado--valido" id="ver-valido" hidden>
-            <div class="resultado-cabecera"><span class="resultado-marca">✓</span><span><b>Certificado válido</b><small id="ver-nota"></small></span></div>
-            <dl class="pares resultado-cuerpo">
-              <dt>Titular</dt><dd id="ver-alumno">—</dd>
-              <dt>Institución emisora</dt><dd id="ver-institucion">—</dd>
-              <dt>Fecha de emisión</dt><dd id="ver-fecha">—</dd>
-              <dt>Token ID</dt><dd class="mono" id="ver-token">—</dd>
-              <dt>Red</dt><dd id="ver-red-nombre">—</dd>
-              <dt>Wallet propietaria</dt><dd class="mono quebrar" id="ver-propietario">—</dd>
-              <dt>CID de metadata</dt><dd class="mono quebrar" id="ver-cid">—</dd>
-              <dt>CID del PDF base</dt><dd class="mono quebrar" id="ver-pdf-cid">—</dd>
-              <dt>Contrato</dt><dd class="mono quebrar" id="ver-contrato">—</dd>
-            </dl>
-            <div class="resultado-pie">
-              <a class="boton" id="ver-pdf" target="_blank" rel="noopener" hidden>↓ PDF del certificado</a>
-              <a class="boton boton--primario" id="ver-explorador" target="_blank" rel="noopener" hidden>Ver transacción</a>
-            </div>
-          </div>
-
-          <div class="resultado resultado--invalido" id="ver-invalido" hidden>
-            <div class="resultado-cabecera"><span class="resultado-marca">!</span><span><b>Certificado no válido</b><small id="ver-error"></small></span></div>
-            <div class="resultado-cuerpo">
-              <div class="banda banda--error">No aceptes este documento como comprobante. Si crees que hay un error, contacta a la institución emisora con el identificador consultado.</div>
-            </div>
+          <div data-resultado-verificacion>
+            <div class="vacio"><b>Sin resultados todavía</b><span>El resultado de la verificación aparecerá aquí.</span></div>
           </div>
         </div>
 
@@ -547,6 +585,16 @@
     </div>
   </div>
 </section>
+
+<div class="modal" id="modal-camara" hidden>
+  <div class="modal-tarjeta">
+    <h2>Escanear QR del certificado</h2>
+    <p class="ayuda">Apunta la cámara al QR. Se verifica solo al detectarlo.</p>
+    <video id="camara-video" playsinline muted></video>
+    <p class="ayuda" id="camara-estado">Abriendo la cámara…</p>
+    <div class="acciones-derecha"><button class="boton" type="button" data-accion="Cerrar_Camara">Cancelar</button></div>
+  </div>
+</div>
 
 <div class="aviso-flotante" id="aviso-flotante" role="status"></div>
 

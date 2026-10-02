@@ -43,7 +43,7 @@ function Pintar_Instituciones() {
   Poner_Texto('inst-estudiantes', Lista.reduce((Suma, I) => Suma + I.estudiantes, 0));
   Por_Id('tabla-instituciones').innerHTML = Lista.map((I) => `
     <tr>
-      <td><span class="celda-marca">${Logo_Miniatura(I)}<span><b>${Escapar(I.nombre)}</b><small class="sub-celda">${Escapar(I.admin_correo || 'sin admin institucional')}</small></span></span></td>
+      <td><span class="celda-marca">${Logo_Miniatura(I)}<span><b>${Escapar(I.nombre)}</b>${I.es_principal ? ' <span class="pastilla">principal</span>' : ''}<small class="sub-celda">${Escapar(I.admin_correo || 'sin admin institucional')}</small></span></span></td>
       <td><a class="enlace-tx" href="${Escapar(I.ruta_registro)}" target="_blank">${Escapar(I.ruta_registro)}</a></td>
       <td class="mono derecha">${Dinero(I.credito_usd)}</td>
       <td class="mono derecha">${I.estudiantes}</td>
@@ -79,6 +79,9 @@ Registrar_Pantalla('institucion', {
     Poner_Texto('det-entregados', I.entregados);
     Poner_Texto('det-credito', Dinero(I.credito_usd));
     Por_Id('det-color').value = I.color;
+    // La principal recibe a los estudiantes de las instituciones borradas: no se borra.
+    Por_Id('zona-eliminar').hidden = I.es_principal;
+    Por_Id('aviso-principal').hidden = !I.es_principal;
     Por_Id('det-responsable').value = I.responsable_nombre || '';
     Por_Id('det-correo').value = I.admin_correo || '';
     const { emisiones: Emisiones } = await Llamar_Api(`/api/certificados/historial?institucion_id=${I.id}`);
@@ -148,7 +151,7 @@ async function Editar_Institucion(Formulario) {
 // Borrado irreversible: se pide escribir el nombre exacto para confirmar.
 async function Eliminar_Institucion() {
   const I = Institucion_Actual();
-  const Respuesta = prompt(`Se borrarán "${I.nombre}", su ruta de registro, sus ${I.estudiantes} estudiantes, sus lotes y todas sus cuentas.\n\nEscribe el nombre de la institución para confirmar:`);
+  const Respuesta = prompt(`Se borrarán "${I.nombre}", su ruta de registro, su cuenta institucional y sus lotes. Sus ${I.estudiantes} estudiantes y sus certificados pasarán a Blockfinity Advisors.\n\nEscribe el nombre de la institución para confirmar:`);
   if (Respuesta === null) return;
   if (Respuesta.trim() !== I.nombre) return Mostrar_Aviso('El nombre no coincide. No se eliminó nada.', true);
   await Llamar_Api(`/api/panel/instituciones/${I.id}`, { metodo: 'DELETE' });

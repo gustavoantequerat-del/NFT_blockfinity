@@ -30,12 +30,14 @@ Aplicacion.use(Marca.Url_Logos, express.static(Marca.Carpeta_Logos));
 // Rutas de la app (todas sirven el mismo index.html; el frontend decide la vista):
 //   /login             estudiantes y administradores institucionales
 //   /admin             administrador de la plataforma
+//   /registro          registro de estudiantes de la institución principal
 //   /registro_<slug>   registro de estudiantes de una institución
+//   /invitado          landing pública con "Comprobar" (verificación)
 //   /verificar         verificación pública
 // La raíz va a /login, salvo que venga del QR de un certificado (?token=…).
 const Enviar_App = (_Peticion, Respuesta) => Respuesta.sendFile(path.join(Carpeta_Frontend, 'index.html'));
 Aplicacion.get('/', (Peticion, Respuesta, Siguiente) => (Peticion.query.token || Peticion.query.cid ? Siguiente() : Respuesta.redirect('/login')), Enviar_App);
-Aplicacion.get(['/login', '/admin', '/verificar', /^\/registro_[a-z0-9_]+\/?$/i], Enviar_App);
+Aplicacion.get(['/login', '/admin', '/verificar', '/invitado', '/registro', /^\/registro_[a-z0-9_]+\/?$/i], Enviar_App);
 
 Aplicacion.use('/api', Rutas_Sesion);
 Aplicacion.use('/api/publico', Rutas_Publicas);
@@ -54,7 +56,7 @@ Aplicacion.use((Error_Express, _Peticion, Respuesta, _Siguiente) => {
 
 Aplicacion.listen(Puerto, async () => {
   console.log(`\nServidor corriendo en http://localhost:${Puerto}`);
-  console.log(`Login: /login  ·  Administrador: /admin  ·  Registro: /registro_<institución>`);
+  console.log('Login: /login  ·  Admin: /admin  ·  Registro: /registro y /registro_<institución>  ·  Invitados: /invitado');
 
   // Se informa el estado de ambas redes, pero el servidor arranca igual: el
   // admin puede corregir el .env o cambiar de modo sin perder el panel.

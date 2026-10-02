@@ -27,8 +27,14 @@ function Datos_Marca(Institucion) {
     slug: Institucion.slug,
     color: Es_Color_Valido(Institucion.color) ? Institucion.color : Color_Predeterminado,
     logo_url: Institucion.logo_archivo ? `${Url_Logos}/${Institucion.logo_archivo}` : null,
-    ruta_registro: `/registro_${Institucion.slug}`,
+    es_principal: Boolean(Institucion.es_principal),
+    // La principal (Blockfinity Advisors) usa la ruta corta /registro.
+    ruta_registro: Institucion.es_principal ? '/registro' : `/registro_${Institucion.slug}`,
   };
 }
 
-module.exports = { Carpeta_Logos, Url_Logos, Color_Predeterminado, Crear_Slug, Es_Color_Valido, Datos_Marca };
+function Id_Institucion_Principal(Base_Datos) {
+  return Base_Datos.prepare('SELECT id FROM instituciones WHERE es_principal = 1').get()?.id || null;
+}
+
+module.exports = { Carpeta_Logos, Url_Logos, Color_Predeterminado, Crear_Slug, Es_Color_Valido, Datos_Marca, Id_Institucion_Principal };

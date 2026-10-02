@@ -1,11 +1,12 @@
 // Registro de estudiantes en /registro_<slug>. La página toma el color y el
 // logo de la institución, y quien se registra queda como estudiante de ella.
+// /registro (sin sufijo) es el de la institución principal, Blockfinity Advisors.
 import { Llamar_Api } from './Api.js';
 import { Mostrar_Vista } from './Navegacion.js';
 import { Aplicar_Marca, Es_Color_Oscuro } from './Marca.js';
 import { Por_Id, Datos_Formulario } from './Utilidades.js';
 
-const Patron_Ruta = /^\/registro_([a-z0-9_]+)\/?$/i;
+const Patron_Ruta = /^\/registro(?:_([a-z0-9_]+))?\/?$/i;
 let Slug_Actual = null;
 
 export function Es_Ruta_Registro() {
@@ -25,20 +26,23 @@ function Pintar_Header(Institucion) {
   Por_Id('registro-logo-blockfinity').src = `/Recursos/Logos/Logo_Blockfinity_${Oscuro ? 'Blanco' : 'Gris'}.png`;
 
   const Logo = Por_Id('registro-logo-institucion');
-  Logo.hidden = !Institucion.logo_url;
   if (Institucion.logo_url) {
     Logo.src = Institucion.logo_url;
     Logo.alt = Institucion.nombre;
   }
-  // Sin logo se muestra el nombre junto al de Blockfinity.
-  Por_Id('registro-nombre-barra').textContent = Institucion.logo_url ? '' : Institucion.nombre;
+  // Sin logo se muestra el nombre junto al de Blockfinity. La principal es
+  // Blockfinity misma: solo su logo.
+  Logo.hidden = !Institucion.logo_url || Institucion.es_principal;
+  Por_Id('registro-nombre-barra').textContent = Institucion.logo_url || Institucion.es_principal ? '' : Institucion.nombre;
+  document.querySelector('.registro-separador').hidden = Institucion.es_principal;
 }
 
 export async function Arrancar_Registro_Estudiante() {
-  Slug_Actual = window.location.pathname.match(Patron_Ruta)[1].toLowerCase();
+  const Slug_Ruta = window.location.pathname.match(Patron_Ruta)[1]?.toLowerCase();
   Mostrar_Vista('vista-registro');
   try {
-    const { institucion: Institucion } = await Llamar_Api(`/api/publico/institucion/${Slug_Actual}`);
+    const { institucion: Institucion } = await Llamar_Api(Slug_Ruta ? `/api/publico/institucion/${Slug_Ruta}` : '/api/publico/institucion-principal');
+    Slug_Actual = Institucion.slug;
     Aplicar_Marca(Institucion);
     Pintar_Header(Institucion);
     Por_Id('registro-titulo').textContent = `Regístrate en ${Institucion.nombre}`;

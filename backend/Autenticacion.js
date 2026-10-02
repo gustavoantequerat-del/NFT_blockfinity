@@ -27,6 +27,17 @@ function Requerir_Rol(...Roles) {
   };
 }
 
+// Para rutas públicas que responden distinto si hay sesión (verificación).
+function Leer_Sesion_Opcional(Peticion) {
+  const Encabezado = Peticion.headers.authorization || '';
+  if (!Encabezado.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(Encabezado.slice(7), Secreto_Jwt);
+  } catch (_) {
+    return null;
+  }
+}
+
 function Firmar_Sesion(Usuario) {
   return jwt.sign(
     { id: Usuario.id, correo: Usuario.correo, rol: Usuario.rol, institucion_id: Usuario.institucion_id || null },
@@ -35,4 +46,4 @@ function Firmar_Sesion(Usuario) {
   );
 }
 
-module.exports = { Secreto_Jwt, Requerir_Sesion, Requerir_Rol, Firmar_Sesion };
+module.exports = { Secreto_Jwt, Requerir_Sesion, Requerir_Rol, Firmar_Sesion, Leer_Sesion_Opcional };

@@ -10,6 +10,7 @@ const Blockchain = require('./Blockchain');
 const Configuracion_Red = require('./Configuracion_Red');
 const { Requerir_Sesion, Requerir_Rol } = require('./Autenticacion');
 const { Carpeta_Subidas } = require('./Emision_Certificados');
+const { Crear_Enlace_Recuperacion } = require('./Recuperacion');
 const Marca = require('./Marca_Institucion');
 const bcrypt = require('bcryptjs');
 
@@ -203,22 +204,26 @@ Rutas.patch('/instituciones/:id', Solo_Admin, Subida_Logo.single('logo'), async 
   Respuesta.json({ exito: true, institucion: Completar_Institucion(Base_Datos.prepare('SELECT * FROM instituciones WHERE id = ?').get(Institucion.id)) });
 });
 
-// Borra la institución con sus cuentas (admin institucional y estudiantes),
-// su lista de estudiantes y sus lotes. Las emisiones quedan en el historial
-// (el NFT sigue existiendo en blockchain) pero sin institución asociada.
+// Borra la institución. Sus estudiantes (cuentas y lista) y sus certificados
+// pasan a la institución principal (Blockfinity Advisors), así siguen
+// pudiendo entrar y ver sus certificados. Se borran sus cuentas de admin
+// institucional, sus lotes y su logo.
 Rutas.delete('/instituciones/:id', Solo_Admin, (Peticion, Respuesta) => {
   const Institucion = Base_Datos.prepare('SELECT * FROM instituciones WHERE id = ?').get(Number(Peticion.params.id));
   if (!Institucion) return Respuesta.status(404).json({ exito: false, mensaje: 'Institución no encontrada.' });
+  if (Institucion.es_principal) return Respuesta.status(400).json({ exito: false, mensaje: 'La institución principal no se puede eliminar.' });
+  const Principal_Id = Marca.Id_Institucion_Principal(Base_Datos);
   const Plantillas = Base_Datos.prepare('SELECT plantilla_archivo FROM lotes_solicitados WHERE institucion_id = ? AND plantilla_archivo IS NOT NULL').all(Institucion.id);
 
   Base_Datos.exec('BEGIN');
   try {
-    Base_Datos.prepare("DELETE FROM reset_tokens WHERE user_id IN (SELECT id FROM usuarios WHERE institucion_id = ? AND rol != 'admin')").run(Institucion.id);
+    Base_Datos.prepare("DELETE FROM reset_tokens WHERE user_id IN (SELECT id FROM usuarios WHERE institucion_id = ? AND rol = 'viewer')").run(Institucion.id);
+    Base_Datos.prepare("DELETE FROM usuarios WHERE institucion_id = ? AND rol = 'viewer'").run(Institucion.id);
+    Base_Datos.prepare("UPDATE usuarios SET institucion_id = ? WHERE institucion_id = ? AND rol = 'student'").run(Principal_Id, Institucion.id);
+    Base_Datos.prepare('UPDATE estudiantes_institucionales SET institucion_id = ? WHERE institucion_id = ?').run(Principal_Id, Institucion.id);
+    Base_Datos.prepare('UPDATE emisiones SET institucion_id = ? WHERE institucion_id = ?').run(Principal_Id, Institucion.id);
     Base_Datos.prepare('DELETE FROM solicitudes_acceso WHERE institucion_id = ?').run(Institucion.id);
-    Base_Datos.prepare("DELETE FROM usuarios WHERE institucion_id = ? AND rol != 'admin'").run(Institucion.id);
-    Base_Datos.prepare('DELETE FROM estudiantes_institucionales WHERE institucion_id = ?').run(Institucion.id);
     Base_Datos.prepare('DELETE FROM lotes_solicitados WHERE institucion_id = ?').run(Institucion.id);
-    Base_Datos.prepare('UPDATE emisiones SET institucion_id = NULL WHERE institucion_id = ?').run(Institucion.id);
     Base_Datos.prepare('DELETE FROM instituciones WHERE id = ?').run(Institucion.id);
     Base_Datos.exec('COMMIT');
   } catch (Error_Borrado) {
@@ -227,7 +232,7 @@ Rutas.delete('/instituciones/:id', Solo_Admin, (Peticion, Respuesta) => {
   }
   Borrar_Archivo(Institucion.logo_archivo && path.join(Marca.Carpeta_Logos, Institucion.logo_archivo));
   for (const Lote of Plantillas) Borrar_Archivo(path.join(Carpeta_Plantillas, Lote.plantilla_archivo));
-  console.log(`🗑️ Institución "${Institucion.nombre}" eliminada por ${Peticion.Usuario.correo}`);
+  console.log(`🗑️ Institución "${Institucion.nombre}" eliminada por ${Peticion.Usuario.correo}; sus estudiantes pasan a la institución principal`);
   Respuesta.json({ exito: true });
 });
 
@@ -274,6 +279,18 @@ Rutas.delete('/estudiantes/:id', Solo_Personal, (Peticion, Respuesta) => {
   // Si se registró por la ruta de la institución, también pierde el acceso.
   if (Estudiante.usuario_id) Base_Datos.prepare("DELETE FROM usuarios WHERE id = ? AND rol = 'student'").run(Estudiante.usuario_id);
   Respuesta.json({ exito: true });
+});
+
+// Enlace para que un estudiante cree una contraseña nueva (útil si el
+// servidor no tiene correo configurado). Válido 1 hora, un solo uso.
+Rutas.post('/estudiantes/:id/enlace-recuperacion', Solo_Personal, (Peticion, Respuesta) => {
+  const Estudiante = Base_Datos.prepare('SELECT * FROM estudiantes_institucionales WHERE id = ?').get(Number(Peticion.params.id));
+  if (!Estudiante) return Respuesta.status(404).json({ exito: false, mensaje: 'Estudiante no encontrado.' });
+  if (!Es_Admin(Peticion) && Estudiante.institucion_id !== Institucion_De(Peticion)) {
+    return Respuesta.status(403).json({ exito: false, mensaje: 'No puedes modificar este estudiante.' });
+  }
+  if (!Estudiante.usuario_id) return Respuesta.status(400).json({ exito: false, mensaje: 'Este estudiante no tiene cuenta: se agregó a mano, no por el registro.' });
+  Respuesta.json({ exito: true, enlace: Crear_Enlace_Recuperacion(Peticion, Estudiante.usuario_id) });
 });
 
 // ---------- Lotes solicitados por las instituciones ----------
