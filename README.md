@@ -26,8 +26,12 @@ npm start                 # http://localhost:3000 → redirige a /login
 |---|---|---|
 | `/login` | Estudiantes y admins institucionales | Inicio de sesión. Cada cuenta entra a su panel con la marca de su institución. No se pueden crear cuentas aquí |
 | `/admin` | Administrador de la plataforma | Inicio de sesión del administrador. Las cuentas de admin no entran por `/login` y las demás no entran por `/admin` |
+| `/registro` | Estudiantes | Registro en la institución principal, **Blockfinity Advisors** |
 | `/registro_<institución>` | Estudiantes | Registro con nombre, correo, contraseña y wallet. Quien se registra queda como estudiante de esa institución. Ej.: `/registro_rosa_gattorno` |
-| `/verificar` y `/?token=…` | Cualquiera | Verificación pública. El QR del certificado abre `/?token=…&cid=…&red=…` |
+| `/invitado` | Cualquiera, sin cuenta | Landing que explica el certificado NFT, con **Comprobar** (escribir el identificador o escanear el QR con la cámara) |
+| `/verificar` y `/?token=…` | Cualquiera | El QR del certificado abre `/?token=…&cid=…&red=…`. Sin sesión lleva a la landing de `/invitado` con el resultado; con sesión, a la pantalla de verificación del panel |
+
+**Recuperar contraseña:** "¿Olvidaste tu contraseña?" en `/login` (y en `/admin`) envía un enlace de un solo uso, válido 1 hora (`/login?reset=…`). El correo se envía con la API de [Resend](https://resend.com) usando `RESEND_API_KEY` y `CORREO_REMITENTE`. Sin esas variables, el enlace aparece en la consola del servidor. Además, el admin institucional puede generar el enlace de un estudiante desde **Estudiantes y lotes → Enlace de contraseña**, y el administrador cambia la contraseña del admin institucional desde el detalle de la institución.
 
 La raíz `/` redirige a `/login`, salvo que traiga los parámetros del QR.
 
@@ -63,7 +67,7 @@ El administrador cambia de modo con el switch **Test | Main** de la barra superi
 
 Las emisiones hechas antes de este cambio se marcan como `main`.
 
-Otras variables: `JWT_SECRET` (obligatoria), `PORT`, `CORREO_CONTACTO` (correo para que las instituciones pidan su alta), `PUBLIC_VERIFY_URL` (dominio público al que apunta el QR), `CERT_QR_*` y `CERT_NAME_*` (posición del QR y del nombre en la plantilla) y `DEMO_STUDENT_WALLET`.
+Otras variables: `JWT_SECRET` (obligatoria), `PORT`, `CORREO_CONTACTO` (correo para que las instituciones pidan su alta), `RESEND_API_KEY` y `CORREO_REMITENTE` (correos de recuperación de contraseña), `PUBLIC_VERIFY_URL` (dominio público al que apunta el QR), `CERT_QR_*` y `CERT_NAME_*` (posición del QR y del nombre en la plantilla) y `DEMO_STUDENT_WALLET`.
 
 ---
 
@@ -111,14 +115,29 @@ La marca se aplica en:
 
 En el detalle de la institución, el administrador puede cambiar el color, el logo, el responsable y el correo o la contraseña del admin institucional. El admin institucional ve y comparte el enlace de registro desde su Dashboard.
 
-**Eliminar institución** es exclusivo del administrador y pide escribir el nombre para confirmar. Borra:
+**Institución principal, Blockfinity Advisors:** se crea sola al arrancar, su registro está en `/registro` y no se puede eliminar.
 
-- la institución y su ruta de registro;
-- su lista de estudiantes y sus lotes, con las plantillas;
-- su logo;
-- todas sus cuentas: el admin institucional y los estudiantes, que pierden el acceso.
+**Eliminar institución** es exclusivo del administrador y pide escribir el nombre para confirmar.
 
-Los NFT ya emitidos siguen en blockchain y en el historial, pero sin institución asociada. Si una institución quita a un estudiante de su lista, ese estudiante también pierde su cuenta.
+- **Se borran:** la institución, su ruta de registro, su cuenta de admin institucional, sus lotes con las plantillas y su logo.
+- **Pasan a Blockfinity Advisors:** sus estudiantes, con su cuenta y su lugar en la lista, y sus certificados. Así siguen entrando por `/login` y viendo sus NFT.
+
+Si una institución quita a un estudiante de su lista, ese estudiante pierde su cuenta.
+
+## Qué muestra la verificación a cada quien
+
+El filtro se aplica en el servidor: los datos ocultos nunca llegan al navegador.
+
+| Quien consulta | Resultado |
+|---|---|
+| Estudiante, certificado propio | "Certificado válido · es tuyo" con todos los datos |
+| Estudiante, certificado de otra persona | "Existe, pero no es tuyo" con los datos de su titular (nombre y wallet), sin la institución |
+| Admin institucional, estudiante de su institución | "Certificado válido" con los datos del estudiante y del certificado |
+| Admin institucional, certificado de otra institución | "Existe y es válido", sin decir de qué institución ni de qué estudiante |
+| Invitado o sin sesión (`/invitado`, QR) | Solo si es válido: datos del estudiante y de la verificación, sin la institución |
+| Administrador | Todo |
+
+**Escanear con la cámara:** el botón 📷 abre la cámara y lee el QR con `BarcodeDetector` (Chrome, Edge, Android). En Safari y Firefox carga [jsQR](https://github.com/cozmo/jsQR) desde jsDelivr. El navegador solo permite usar la cámara con HTTPS o en `localhost`.
 
 ## Roles y cuentas de prueba
 
@@ -127,7 +146,7 @@ Los NFT ya emitidos siguen en blockchain y en el historial, pero sin institució
 | Rol | Entra por | Correo | Contraseña | Qué ve |
 |---|---|---|---|---|
 | Administrador | `/admin` | `laura.mendez@universidad.edu` | `demoaccess` | Instituciones, Emisiones, Solicitudes de lotes, Nueva emisión, Configuración (switch test/main) |
-| Admin institucional | `/login` | `consulta@universidad.edu` | `consulta123` | Dashboard con el enlace de registro, Estudiantes y lotes |
+| Admin institucional | `/login` | `consulta@universidad.edu` | `consulta123` | Dashboard con el enlace de registro, Estudiantes y lotes (con enlace de recuperación de contraseña) |
 | Estudiante | `/login` | `estudiante@universidad.edu` | `estudiante123` | Mis certificados |
 
 La wallet del estudiante demo es la cuenta #1 pública de Hardhat. Úsala **solo en test**. Cambia estas contraseñas antes de salir a producción.
@@ -147,8 +166,9 @@ También se puede emitir sin lote: en el asistente se sube la plantilla y un Exc
 
 | Ruta | Acceso |
 |---|---|
-| `POST /api/login` (con `portal: "admin"` desde `/admin`), `GET /api/sesion` | público / sesión |
-| `GET /api/publico/verificar?q=…&red=…`, `GET /api/publico/institucion/:slug`, `POST /api/publico/registro/:slug`, `GET /api/publico/configuracion` | público |
+| `POST /api/login` (con `portal: "admin"` desde `/admin`), `GET /api/sesion`, `POST /api/olvide-contrasena`, `POST /api/restablecer-contrasena` | público / sesión |
+| `GET /api/publico/verificar?q=…&red=…` (responde según la sesión, si la hay), `GET /api/publico/institucion/:slug`, `GET /api/publico/institucion-principal`, `POST /api/publico/registro/:slug`, `GET /api/publico/configuracion` | público |
+| `POST /api/panel/estudiantes/:id/enlace-recuperacion` | admin e institución (solo sus estudiantes) |
 | `GET /api/panel/red`, `GET /api/panel/red/estado`, `PUT /api/panel/red/modo` | sesión / admin |
 | `POST/PATCH/DELETE /api/panel/instituciones` (multipart con logo), `/instituciones/:id/credito` | admin |
 | `/api/panel/resumen`, `/estudiantes`, `/lotes` | admin e institución (solo la suya) |
@@ -170,6 +190,8 @@ backend/
   Ipfs.js                  Pinata
   Plantilla_Pdf.js         Nombre, QR y vista previa del PDF
   Marca_Institucion.js     Ruta (slug), color y logo de cada institución
+  Recuperacion.js          Enlaces de recuperación de contraseña
+  Correo.js                Envío de correos (Resend)
   Rutas_*.js               Sesión, panel, público y certificados
   uploads/logos/           Logos subidos (servidos en /Logos_Instituciones)
   Base_Datos.js            Esquema SQLite y migraciones

@@ -1,0 +1,38 @@
+/* =============================================================
+   Landing de invitados (/invitado): qué es el certificado NFT y
+   "Comprobar" para verificarlo.
+   ============================================================= */
+.invitado { min-height: 100vh; background: var(--fondo); }
+.invitado.activa { display: block; }
+
+.invitado-barra { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px; padding: 14px 24px; background: var(--tinta); }
+.invitado-logo { height: 36px; width: auto; }
+.invitado-entrar { color: #fff; font-size: 13px; }
+
+.invitado-portada {
+  padding: 72px 24px 64px; text-align: center; color: #fff;
+  background:
+    radial-gradient(600px 400px at 80% 0%, color-mix(in oklab, var(--acento) 45%, transparent), transparent 70%),
+    var(--tinta);
+}
+.invitado-portada h1 { max-width: 20ch; margin: 0 auto 16px; font-size: 38px; line-height: 1.12; font-weight: 700; letter-spacing: -.02em; }
+.invitado-portada p { max-width: 60ch; margin: 0 auto 28px; font-size: 16px; line-height: 1.6; color: #c9ced6; }
+.invitado-antetitulo { margin-bottom: 14px !important; font-family: var(--fuente-mono); font-size: 12px !important; letter-spacing: .14em; text-transform: uppercase; color: #8fa6ff !important; }
+
+.invitado-pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1000px; margin: -32px auto 0; padding: 0 16px; }
+.invitado-pasos div { padding: 22px; background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio); box-shadow: var(--sombra); }
+.invitado-pasos b { width: 30px; height: 30px; display: grid; place-items: center; margin-bottom: 12px; border-radius: 50%; background: var(--acento-suave); color: var(--acento-texto); }
+.invitado-pasos h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.invitado-pasos p { font-size: 13.5px; line-height: 1.55; color: var(--apagado); }
+
+.invitado-comprobar { max-width: 760px; margin: 0 auto; padding: 56px 16px 24px; scroll-margin-top: 70px; }
+.invitado-comprobar h2 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.invitado-comprobar .ayuda { margin-bottom: 16px; }
+
+@media (max-width: 760px) {
+  .invitado-barra { padding: 12px 16px; }
+  .invitado-logo { height: 28px; }
+  .invitado-portada { padding: 48px 16px 56px; }
+  .invitado-portada h1 { font-size: 28px; }
+  .invitado-pasos { grid-template-columns: 1fr; }
+}

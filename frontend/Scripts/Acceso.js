@@ -2,7 +2,8 @@
 //   /login → estudiantes y administradores institucionales
 //   /admin → administrador de la plataforma
 // No se crean cuentas aquí: las instituciones las da de alta el admin y los
-// estudiantes se registran en /registro_<institución>.
+// estudiantes se registran en /registro_<institución>. Sí se recupera la
+// contraseña: "¿Olvidaste tu contraseña?" envía un enlace ?reset=<token>.
 import { Llamar_Api, Guardar_Token, Leer_Token } from './Api.js';
 import { Estado } from './Estado.js';
 import { Mostrar_Vista, Mostrar_Pantalla, Pantalla_Inicio } from './Navegacion.js';
@@ -17,6 +18,13 @@ export function Portal_Actual() {
 
 function Rol_Permitido(Rol) {
   return Portal_Actual() === 'admin' ? Rol === 'admin' : Rol !== 'admin';
+}
+
+const Token_Recuperacion = new URLSearchParams(window.location.search).get('reset');
+
+function Mostrar_Panel_Acceso(Nodo) {
+  const Panel = Nodo.dataset.panel;
+  document.querySelectorAll('[data-panel-acceso]').forEach((Formulario) => { Formulario.hidden = Formulario.dataset.panelAcceso !== Panel; });
 }
 
 function Preparar_Pantalla_Acceso() {
@@ -61,6 +69,23 @@ async function Iniciar_Sesion(Formulario) {
   await Entrar_A_La_App();
 }
 
+async function Pedir_Recuperacion(Formulario) {
+  const { mensaje: Mensaje } = await Llamar_Api('/api/olvide-contrasena', { json: Datos_Formulario(Formulario) });
+  Formulario.reset();
+  Mostrar_Aviso(Mensaje);
+  Mostrar_Panel_Acceso({ dataset: { panel: 'entrar' } });
+}
+
+async function Restablecer_Contrasena(Formulario) {
+  const { contrasena: Contrasena, repetir: Repetir } = Datos_Formulario(Formulario);
+  if (Contrasena !== Repetir) return Mostrar_Aviso('Las contraseñas no coinciden.', true);
+  const { mensaje: Mensaje } = await Llamar_Api('/api/restablecer-contrasena', { json: { token: Token_Recuperacion, contrasena: Contrasena } });
+  Formulario.reset();
+  history.replaceState(null, '', window.location.pathname);
+  Mostrar_Aviso(Mensaje);
+  Mostrar_Panel_Acceso({ dataset: { panel: 'entrar' } });
+}
+
 function Cerrar_Sesion() {
   const Era_Admin = Estado.Usuario?.rol === 'admin';
   Guardar_Token(null);
@@ -71,6 +96,10 @@ function Cerrar_Sesion() {
 
 export async function Arrancar_Acceso() {
   Mostrar_Contacto().catch(() => {});
+  if (Token_Recuperacion) {
+    Preparar_Pantalla_Acceso();
+    return Mostrar_Panel_Acceso({ dataset: { panel: 'restablecer' } });
+  }
   if (Leer_Token()) {
     try {
       const { usuario: Usuario } = await Llamar_Api('/api/sesion');
@@ -84,5 +113,5 @@ export async function Arrancar_Acceso() {
   Preparar_Pantalla_Acceso();
 }
 
-export const Acciones = { Cerrar_Sesion };
-export const Formularios = { Iniciar_Sesion };
+export const Acciones = { Cerrar_Sesion, Mostrar_Panel_Acceso };
+export const Formularios = { Iniciar_Sesion, Pedir_Recuperacion, Restablecer_Contrasena };

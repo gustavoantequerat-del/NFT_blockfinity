@@ -139,6 +139,9 @@ const Migraciones = [
   'ALTER TABLE instituciones ADD COLUMN logo_archivo TEXT',
   // Cuenta del estudiante que se registró por la ruta de su institución.
   'ALTER TABLE estudiantes_institucionales ADD COLUMN usuario_id INTEGER',
+  // La institución principal (Blockfinity Advisors) no se puede borrar y
+  // recibe a los estudiantes de las instituciones eliminadas.
+  'ALTER TABLE instituciones ADD COLUMN es_principal INTEGER NOT NULL DEFAULT 0',
 ];
 
 for (const Migracion of Migraciones) {
@@ -161,5 +164,18 @@ for (const Institucion of Base_Datos.prepare('SELECT id, nombre FROM institucion
   Base_Datos.prepare('UPDATE instituciones SET slug = ? WHERE id = ?').run(Slug, Institucion.id);
 }
 Base_Datos.exec('CREATE UNIQUE INDEX IF NOT EXISTS instituciones_slug ON instituciones(slug)');
+
+// Institución principal: su registro está en /registro.
+if (!Base_Datos.prepare('SELECT id FROM instituciones WHERE es_principal = 1').get()) {
+  const Existente = Base_Datos.prepare("SELECT id FROM instituciones WHERE slug = 'blockfinity_advisors'").get();
+  if (Existente) Base_Datos.prepare('UPDATE instituciones SET es_principal = 1 WHERE id = ?').run(Existente.id);
+  else Base_Datos.exec("INSERT INTO instituciones (nombre, etiqueta, slug, color, es_principal) VALUES ('Blockfinity Advisors', 'BLOCKFINITY_ADVISORS', 'blockfinity_advisors', '#1d2b3a', 1)");
+}
+// Estudiantes y certificados sin institución (ej. de instituciones borradas
+// antes de existir la principal) pasan a la principal.
+Base_Datos.exec(`
+  UPDATE usuarios SET institucion_id = (SELECT id FROM instituciones WHERE es_principal = 1) WHERE rol = 'student' AND institucion_id IS NULL;
+  UPDATE emisiones SET institucion_id = (SELECT id FROM instituciones WHERE es_principal = 1) WHERE institucion_id IS NULL;
+`);
 
 module.exports = Base_Datos;

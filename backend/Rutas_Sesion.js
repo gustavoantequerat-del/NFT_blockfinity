@@ -3,11 +3,14 @@
 //   /admin  → administrador de la plataforma
 // No hay creación de cuentas aquí: las instituciones las da de alta el
 // administrador y los estudiantes se registran en /registro_<institución>.
+// También está la recuperación de contraseña por enlace de un solo uso.
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const Base_Datos = require('./Base_Datos');
 const { Requerir_Sesion, Firmar_Sesion } = require('./Autenticacion');
 const { Datos_Marca } = require('./Marca_Institucion');
+const { Crear_Enlace_Recuperacion, Validar_Token } = require('./Recuperacion');
+const { Enviar_Correo } = require('./Correo');
 
 const Rutas = express.Router();
 
@@ -54,6 +57,41 @@ Rutas.get('/sesion', Requerir_Sesion, (Peticion, Respuesta) => {
     return Respuesta.status(401).json({ exito: false, mensaje: 'Sesión no válida.' });
   }
   Respuesta.json({ exito: true, usuario: Usuario_Publico(Usuario) });
+});
+
+// Recuperación de contraseña. La respuesta es la misma exista o no la
+// cuenta, para no revelar qué correos están registrados.
+Rutas.post('/olvide-contrasena', async (Peticion, Respuesta) => {
+  const Correo = String(Peticion.body?.correo || '').trim().toLowerCase();
+  if (!Correo) return Respuesta.status(400).json({ exito: false, mensaje: 'Escribe tu correo.' });
+
+  const Usuario = Base_Datos.prepare("SELECT * FROM usuarios WHERE correo = ? AND (estado IS NULL OR estado = 'activo')").get(Correo);
+  if (Usuario) {
+    const Enlace = Crear_Enlace_Recuperacion(Peticion, Usuario.id);
+    await Enviar_Correo({
+      Para: Usuario.correo,
+      Asunto: 'Recupera tu contraseña · Certificados NFT',
+      Html: `<p>Hola ${String(Usuario.nombre || '').replace(/[<>&]/g, '')},</p>
+        <p>Para crear una contraseña nueva abre este enlace (válido 1 hora):</p>
+        <p><a href="${Enlace}">${Enlace}</a></p>
+        <p>Si no lo pediste, ignora este correo.</p>`,
+    });
+  }
+  Respuesta.json({
+    exito: true,
+    mensaje: 'Si el correo está registrado, te enviamos un enlace para crear una contraseña nueva. Si no llega, pídele el enlace a tu institución.',
+  });
+});
+
+Rutas.post('/restablecer-contrasena', async (Peticion, Respuesta) => {
+  const Contrasena = String(Peticion.body?.contrasena || '');
+  if (Contrasena.length < 8) return Respuesta.status(400).json({ exito: false, mensaje: 'La contraseña debe tener al menos 8 caracteres.' });
+  const { Registro, Error_Token } = Validar_Token(Peticion.body?.token);
+  if (Error_Token) return Respuesta.status(400).json({ exito: false, mensaje: Error_Token });
+
+  Base_Datos.prepare('UPDATE usuarios SET contrasena_hash = ? WHERE id = ?').run(await bcrypt.hash(Contrasena, 12), Registro.user_id);
+  Base_Datos.prepare('UPDATE reset_tokens SET used = 1 WHERE id = ?').run(Registro.id);
+  Respuesta.json({ exito: true, mensaje: 'Contraseña actualizada. Ya puedes iniciar sesión.' });
 });
 
 module.exports = Rutas;

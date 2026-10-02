@@ -7,12 +7,19 @@ const Blockchain = require('./Blockchain');
 const Configuracion_Red = require('./Configuracion_Red');
 const Ipfs = require('./Ipfs');
 const { Datos_Marca } = require('./Marca_Institucion');
+const { Leer_Sesion_Opcional } = require('./Autenticacion');
 
 const Rutas = express.Router();
 
 function Buscar_Institucion(Slug) {
   return Base_Datos.prepare('SELECT * FROM instituciones WHERE slug = ?').get(String(Slug || '').toLowerCase());
 }
+
+// /registro (sin sufijo) es el registro de la institución principal.
+Rutas.get('/institucion-principal', (_Peticion, Respuesta) => {
+  const Institucion = Base_Datos.prepare('SELECT * FROM instituciones WHERE es_principal = 1').get();
+  Respuesta.json({ exito: true, institucion: Datos_Marca(Institucion) });
+});
 
 // Correo al que las instituciones escriben para que las demos de alta.
 Rutas.get('/configuracion', (_Peticion, Respuesta) => {
@@ -146,27 +153,50 @@ Rutas.get('/verificar', async (Peticion, Respuesta) => {
   }
 
   const Final_Pdf_Url = Emision?.final_pdf_url || Metadata?.pdf_url || null;
-  Respuesta.json({
-    exito: true,
-    certificado: {
-      token_id: Token_Id,
-      red: Modo,
-      nombre_red: Red.Nombre_Red,
-      contrato: Red.Direccion_Contrato,
-      propietario: Token.Propietario,
-      token_uri: Token.Token_Uri,
-      metadata_cid: Ipfs.Extraer_Cid(Token.Token_Uri),
-      nombre_alumno: Emision?.nombre_alumno || Metadata?.attributes?.find((A) => A.trait_type === 'Alumno')?.value || Metadata?.name || null,
-      institucion: Emision?.institucion_nombre || null,
-      fecha: Emision?.creado_en || null,
-      tx_hash: Emision?.tx_hash || null,
-      explorer_url: Emision?.explorer_url || null,
-      pdf_cid: Emision?.pdf_cid || Ipfs.Extraer_Cid(Metadata?.pdf_base) || null,
-      pdf_url: Final_Pdf_Url || (Emision?.pdf_cid ? `${Ipfs.Gateway_Ipfs}${Emision.pdf_cid}` : null),
-      pdf_con_qr: Boolean(Final_Pdf_Url),
-      propietario_coincide: Emision ? Token.Propietario.toLowerCase() === String(Emision.wallet_alumno).toLowerCase() : null,
-    },
-  });
+  const Certificado = {
+    token_id: Token_Id,
+    red: Modo,
+    nombre_red: Red.Nombre_Red,
+    contrato: Red.Direccion_Contrato,
+    propietario: Token.Propietario,
+    token_uri: Token.Token_Uri,
+    metadata_cid: Ipfs.Extraer_Cid(Token.Token_Uri),
+    nombre_alumno: Emision?.nombre_alumno || Metadata?.attributes?.find((A) => A.trait_type === 'Alumno')?.value || Metadata?.name || null,
+    institucion: Emision?.institucion_nombre || null,
+    fecha: Emision?.creado_en || null,
+    tx_hash: Emision?.tx_hash || null,
+    explorer_url: Emision?.explorer_url || null,
+    pdf_cid: Emision?.pdf_cid || Ipfs.Extraer_Cid(Metadata?.pdf_base) || null,
+    pdf_url: Final_Pdf_Url || (Emision?.pdf_cid ? `${Ipfs.Gateway_Ipfs}${Emision.pdf_cid}` : null),
+    pdf_con_qr: Boolean(Final_Pdf_Url),
+    propietario_coincide: Emision ? Token.Propietario.toLowerCase() === String(Emision.wallet_alumno).toLowerCase() : null,
+  };
+  Respuesta.json({ exito: true, certificado: Filtrar_Segun_Quien_Consulta(Certificado, Emision, Leer_Sesion_Opcional(Peticion)) });
 });
+
+// Qué ve cada quien del certificado (el filtro se hace aquí, no en el navegador):
+//   admin                → todo
+//   estudiante, propio   → todo ("es tuyo")
+//   estudiante, ajeno    → "existe pero no es tuyo" + a quién pertenece, sin institución
+//   institución, propio  → todo (un estudiante de tu institución)
+//   institución, ajeno   → solo que existe y es válido, sin estudiante ni institución
+//   invitado (sin sesión)→ estudiante y verificación, sin institución
+function Filtrar_Segun_Quien_Consulta(Certificado, Emision, Sesion) {
+  const Sin_Institucion = { ...Certificado, institucion: null };
+  if (Sesion?.rol === 'admin') return { ...Certificado, relacion: 'admin' };
+
+  if (Sesion?.rol === 'student') {
+    const Wallet = Base_Datos.prepare('SELECT wallet FROM usuarios WHERE id = ?').get(Sesion.id)?.wallet?.toLowerCase();
+    const Es_Suyo = Boolean(Wallet) && [Certificado.propietario, Emision?.wallet_alumno].some((W) => String(W || '').toLowerCase() === Wallet);
+    return Es_Suyo ? { ...Certificado, relacion: 'propio' } : { ...Sin_Institucion, relacion: 'ajeno' };
+  }
+
+  if (Sesion?.rol === 'viewer') {
+    if (Emision?.institucion_id && Emision.institucion_id === Sesion.institucion_id) return { ...Certificado, relacion: 'institucion_propia' };
+    return { token_id: Certificado.token_id, red: Certificado.red, nombre_red: Certificado.nombre_red, contrato: Certificado.contrato, relacion: 'otra_institucion' };
+  }
+
+  return { ...Sin_Institucion, relacion: 'invitado' };
+}
 
 module.exports = Rutas;
