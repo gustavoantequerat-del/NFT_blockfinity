@@ -3,1021 +3,621 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Certificados NFT · Panel de emisión</title>
+<title>Certificados NFT</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232f56d3%22/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="app.css" />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/Estilos/Base.css" />
+<link rel="stylesheet" href="/Estilos/Componentes.css" />
+<link rel="stylesheet" href="/Estilos/Estructura.css" />
+<link rel="stylesheet" href="/Estilos/Acceso.css" />
+<link rel="stylesheet" href="/Estilos/Asistente.css" />
+<link rel="stylesheet" href="/Estilos/Certificados.css" />
+<link rel="stylesheet" href="/Estilos/Verificacion.css" />
+<link rel="stylesheet" href="/Estilos/Registro_Wallet.css" />
 </head>
 <body>
 
-<!-- ============================================================
-     VIEW · LOGIN
-     ============================================================ -->
-<section class="view active" id="view-login" data-screen-label="Login">
-  <div class="login-wrap">
-    <aside class="login-aside">
-      <div class="brandmark" data-brand>
-        <span class="logo-slot"></span>
-        <span><span class="brand-name" data-brand-name>Certificados NFT</span><br /><span class="brand-sub">Panel de emisión institucional</span></span>
-      </div>
-      <div class="login-pitch">
+<!-- =============================================================
+     VISTA · ACCESO (iniciar sesión / crear cuenta / contraseña)
+     ============================================================= -->
+<section class="vista" id="vista-acceso">
+  <div class="acceso">
+    <aside class="acceso-lateral">
+      <div class="marca marca--clara"><span class="marca-logo">NFT</span><span>Certificados NFT<small>Panel de emisión institucional</small></span></div>
+      <div class="acceso-pitch">
         <h2>Certificados verificables en blockchain</h2>
-        <p>Emite, custodia y entrega certificados académicos como NFTs, con trazabilidad completa de cada documento.</p>
-        <ul class="login-points">
-          <li><span class="tick">✓</span><span>Plantilla PDF + lista de estudiantes en un mismo flujo.</span></li>
-          <li><span class="tick">✓</span><span>Minteo a la wallet institucional antes de enviar.</span></li>
-          <li><span class="tick">✓</span><span>Trazabilidad por transacción en la red.</span></li>
+        <p>Emite y entrega certificados académicos como NFTs. Cada PDF lleva un QR que se verifica directamente en el contrato.</p>
+        <ul>
+          <li>Plantilla PDF + lista de estudiantes en un mismo flujo.</li>
+          <li>QR con token ID y CID estampado antes de enviar el NFT.</li>
+          <li>Modo test sin costo y modo main con costos reales.</li>
         </ul>
       </div>
-      <div class="login-foot">Plataforma white-label · personalizable por institución</div>
+      <div class="acceso-pie">Plataforma white-label · Blockfinity Advisors</div>
     </aside>
 
-    <main class="login-main">
-      <div class="login-card">
-        <div class="brandmark" data-brand>
-          <span class="logo-slot"></span>
-          <span class="brand-name" data-brand-name>Certificados NFT</span>
-        </div>
-        <div class="authtabs">
-          <button class="on" data-auth-tab="in" type="button">Iniciar sesión</button>
-          <button data-auth-tab="up" type="button">Crear cuenta</button>
+    <main class="acceso-principal">
+      <div class="acceso-tarjeta">
+        <div class="pestanas">
+          <button class="activa" type="button" data-accion="Cambiar_Pestana_Acceso" data-pestana="entrar">Iniciar sesión</button>
+          <button type="button" data-accion="Cambiar_Pestana_Acceso" data-pestana="crear">Crear cuenta</button>
         </div>
 
-        <div data-auth="in">
+        <form data-panel-acceso="entrar" data-formulario="Iniciar_Sesion">
           <h1>Acceso al panel</h1>
-          <p class="sub">Usa tu cuenta institucional para continuar.</p>
-          <div class="field">
-            <label class="label" for="li-user">Correo o usuario</label>
-            <input class="input" id="li-user" type="text" placeholder="nombre@universidad.edu" autocomplete="username" />
+          <p class="sub">Cada cuenta entra directo a su vista según su rol.</p>
+          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" placeholder="nombre@universidad.edu" required /></label>
+          <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" autocomplete="current-password" placeholder="Tu contraseña" required /></label>
+          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Iniciar sesión</button>
+          <div class="acceso-enlaces">
+            <a class="enlace" data-accion="Cambiar_Pestana_Acceso" data-pestana="olvide">¿Olvidaste tu contraseña?</a>
+            <a class="enlace enlace--suave" data-accion="Ir_A_Verificacion">Verificar un certificado sin iniciar sesión →</a>
+            <a class="enlace enlace--suave" href="/registro">Registrar mi wallet para recibir un certificado →</a>
           </div>
-          <div class="field">
-            <label class="label" for="li-pass">Contraseña</label>
-            <input class="input" id="li-pass" type="password" placeholder="Tu contraseña" autocomplete="current-password" />
-          </div>
-          <button class="btn btn--primary btn--block btn--lg" id="login-btn" type="button">Iniciar sesión</button>
-          <div style="text-align:center;margin-top:18px;display:grid;gap:10px;">
-            <a class="link" href="#" onclick="return false;">¿Olvidaste tu contraseña?</a>
-            <a class="link" id="public-verify" style="color:var(--muted);font-size:13px;">Verificar un certificado sin iniciar sesión →</a>
-          </div>
-        </div>
+        </form>
 
-        <div data-auth="up" hidden>
-          <h1>Crear cuenta de consulta</h1>
-          <p class="sub">Indica de qué institución provienes. El administrador aprueba el acceso.</p>
-          <div class="field">
-            <label class="label" for="rg-name">Nombre completo</label>
-            <input class="input" id="rg-name" type="text" placeholder="Andrea Villalobos" />
-          </div>
-          <div class="field">
-            <label class="label" for="rg-mail">Correo institucional</label>
-            <input class="input" id="rg-mail" type="text" placeholder="nombre@universidad.edu" />
-          </div>
-          <div class="field">
-            <label class="label" for="rg-pass">Contraseña</label>
-            <input class="input" id="rg-pass" type="password" placeholder="Mínimo 8 caracteres" />
-          </div>
-          <div class="field">
-            <label class="label" for="rg-inst">Institución de procedencia</label>
-            <select class="input" id="rg-inst" data-inst-select></select>
-            <p class="helper">Selecciona la etiqueta de tu institución. Si no aparece, solicítala al administrador.</p>
-          </div>
-          <button class="btn btn--primary btn--block btn--lg" id="reg-btn" type="button">Solicitar acceso</button>
-          <p class="helper" style="text-align:center;margin-top:16px;">Las cuentas de consulta no emiten certificados.</p>
-        </div>
+        <form data-panel-acceso="crear" data-formulario="Crear_Cuenta" hidden>
+          <h1>Crear cuenta</h1>
+          <p class="sub">Estudiantes: indica tu wallet para ver tus certificados. Instituciones: elige tu institución y el administrador aprobará el acceso.</p>
+          <label class="campo"><span>Tipo de cuenta</span>
+            <select class="entrada" name="tipo" data-accion-cambio="Cambiar_Tipo_Cuenta">
+              <option value="estudiante">Estudiante</option>
+              <option value="institucion">Institución (consulta)</option>
+            </select>
+          </label>
+          <label class="campo"><span>Nombre completo</span><input class="entrada" name="nombre" type="text" placeholder="Andrea Villalobos" required /></label>
+          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" placeholder="nombre@universidad.edu" required /></label>
+          <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" minlength="8" placeholder="Mínimo 8 caracteres" required /></label>
+          <label class="campo" data-solo-tipo="estudiante"><span>Wallet (opcional)</span><input class="entrada mono" name="wallet" type="text" placeholder="0x…" /></label>
+          <label class="campo" data-solo-tipo="institucion" hidden><span>Institución</span><select class="entrada" name="institucion_id" data-lista-instituciones></select></label>
+          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Crear cuenta</button>
+        </form>
+
+        <form data-panel-acceso="olvide" data-formulario="Pedir_Recuperacion" hidden>
+          <h1>Recuperar contraseña</h1>
+          <p class="sub">Te generamos un enlace de un solo uso (válido 1 hora). Lo verás en la consola del servidor.</p>
+          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" required /></label>
+          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Generar enlace</button>
+          <div class="acceso-enlaces"><a class="enlace" data-accion="Cambiar_Pestana_Acceso" data-pestana="entrar">← Volver a iniciar sesión</a></div>
+        </form>
+
+        <form data-panel-acceso="restablecer" data-formulario="Restablecer_Contrasena" hidden>
+          <h1>Nueva contraseña</h1>
+          <p class="sub">Escribe tu nueva contraseña.</p>
+          <label class="campo"><span>Contraseña nueva</span><input class="entrada" name="contrasena" type="password" minlength="8" required /></label>
+          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Guardar contraseña</button>
+        </form>
       </div>
     </main>
   </div>
 </section>
 
-<!-- ============================================================
-     VIEW · APP SHELL
-     ============================================================ -->
-<section class="view" id="view-app">
-  <div class="shell">
+<!-- =============================================================
+     VISTA · REGISTRO DE WALLET (/registro y /registroASOBAN)
+     ============================================================= -->
+<section class="vista registro-wallet" id="vista-registro">
+  <header class="rw-barra">
+    <div class="rw-marca" data-rw-solo="foro">
+      <img src="/Recursos/Logos/Logo_Cablock_Blanco.png" alt="Cámara Boliviana de Blockchain (CABLOCK)" class="rw-logo" />
+      <span class="rw-separador"></span>
+      <img src="/Recursos/Logos/Logo_Foro_Blanco.png" alt="Foro Activos Digitales Bolivia 2026" class="rw-logo" />
+    </div>
+    <div class="rw-marca" data-rw-solo="asoban" hidden>
+      <img src="/Recursos/Logos/Logo_Asoban_Blanco.png" alt="" class="rw-logo rw-logo--asoban" />
+      <span class="rw-marca-texto"><b>ASOBAN</b><small>Asociación de Bancos Privados de Bolivia</small></span>
+      <span class="rw-separador"></span>
+      <img src="/Recursos/Logos/Logo_Blockfinity_Blanco.png" alt="Blockfinity Advisors" class="rw-logo rw-logo--blockfinity" />
+    </div>
+  </header>
 
-    <!-- SIDEBAR -->
-    <nav class="sidebar">
-      <div class="brandmark" data-brand>
-        <span class="logo-slot"></span>
-        <span class="brand-name" data-brand-name>Certificados NFT</span>
+  <main class="rw-contenido" id="rw-contenido">
+    <!-- Paso: elegir camino -->
+    <div class="rw-paso rw-aparecer" data-rw-paso="inicio">
+      <p class="rw-antetitulo" id="rw-antetitulo">Certificados NFT</p>
+      <img src="/Recursos/Logos/Logo_Foro_Color.png" alt="Foro Activos Digitales Bolivia 2026" class="rw-sello" data-rw-solo="foro" />
+      <img src="/Recursos/Logos/Logo_Asoban_Color.png" alt="ASOBAN" class="rw-sello rw-sello--asoban" data-rw-solo="asoban" hidden />
+      <h1 class="rw-titulo">Recibe tu certificado Web3</h1>
+      <p class="rw-subtitulo">Tu certificado será un documento digital (NFT) que vive en la blockchain, a tu nombre. Solo necesitas una wallet donde recibirlo.</p>
+      <p class="rw-pregunta">¿Ya tienes una wallet?</p>
+      <div class="rw-opciones">
+        <button class="rw-opcion" type="button" data-accion="Elegir_Camino_Wallet" data-camino="tengo">
+          <span class="rw-icono rw-icono--azul">◧</span>
+          <b>Sí, ya tengo una</b>
+          <span>Ingresa la dirección donde quieres recibir tu certificado.</span>
+        </button>
+        <button class="rw-opcion" type="button" data-accion="Elegir_Camino_Wallet" data-camino="crear">
+          <span class="rw-icono">✦</span>
+          <b>No, créala por mí</b>
+          <span>Te ayudamos a crearla con MetaMask en un par de minutos.</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Paso: ya tengo wallet -->
+    <form class="rw-panel rw-paso rw-aparecer" data-rw-paso="tengo" data-formulario="Registrar_Wallet_Existente" hidden>
+      <button class="rw-volver" type="button" data-accion="Reiniciar_Registro_Wallet">← Volver</button>
+      <h2>Ingresa tus datos</h2>
+      <p class="rw-guia">Con esto recibirás tu certificado Web3.</p>
+      <label class="rw-campo"><span>Nombre completo</span><input class="rw-entrada" name="nombre" autocomplete="off" placeholder="Escríbelo tal como quieres que aparezca en tu certificado" /></label>
+      <button class="rw-boton rw-boton--borde" type="button" data-accion="Detectar_Wallet">Detectar mi wallet automáticamente</button>
+      <label class="rw-campo"><span>Dirección de tu wallet</span><input class="rw-entrada mono" name="wallet" autocomplete="off" placeholder="0x..." /></label>
+      <p class="rw-ayuda" data-rw-mensaje>Es la dirección pública que empieza con 0x (no una frase secreta ni una clave privada).</p>
+      <button class="rw-boton" type="submit">Registrar mi dirección</button>
+    </form>
+
+    <!-- Paso: crear wallet con MetaMask -->
+    <div class="rw-dos-columnas rw-paso rw-aparecer" data-rw-paso="crear" hidden>
+      <form class="rw-panel" data-formulario="Crear_Wallet_Metamask">
+        <button class="rw-volver" type="button" data-accion="Reiniciar_Registro_Wallet">← Volver</button>
+        <h2>Crea tu wallet</h2>
+        <p class="rw-guia">Te pediremos crear o conectar una cuenta en MetaMask. Si no tienes la extensión, abriremos su página de descarga y la reconoceremos sola apenas termines de instalarla.</p>
+        <label class="rw-campo"><span>Nombre completo</span><input class="rw-entrada" name="nombre" autocomplete="off" placeholder="Escríbelo tal como quieres que aparezca en tu certificado" /></label>
+        <button class="rw-boton" type="submit" data-rw-boton-crear>Crear mi wallet en MetaMask</button>
+        <button class="rw-volver rw-volver--centro" type="button" data-accion="Cancelar_Espera_Metamask" data-rw-cancelar hidden>Cancelar</button>
+        <p class="rw-error" data-rw-mensaje hidden></p>
+        <div data-rw-manual hidden>
+          <label class="rw-campo"><span>¿Ya la creaste? Pega aquí tu dirección</span><input class="rw-entrada mono" name="wallet" autocomplete="off" placeholder="0x..." /></label>
+          <button class="rw-boton rw-boton--borde" type="button" data-accion="Registrar_Wallet_Manual">Registrar esta dirección</button>
+        </div>
+      </form>
+      <aside class="rw-tutorial">
+        <p class="rw-tutorial-titulo"><span class="rw-insignia">Tutorial</span> ¿No sabes cómo?</p>
+        <div class="rw-video">
+          <iframe src="https://drive.google.com/file/d/1fSbIMM9m6RrctzjhcVGvPYvA14zepffK/preview" title="Tutorial: cómo crear tu wallet en MetaMask" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Paso: listo -->
+    <section class="rw-panel rw-paso rw-aparecer" data-rw-paso="listo" aria-live="polite" hidden>
+      <div class="rw-insignia-ok">✓</div>
+      <h2 id="rw-listo-titulo">Todo listo</h2>
+      <p class="rw-guia" id="rw-listo-texto">Registramos tu dirección. Ahí recibirás tu certificado Web3.</p>
+      <span class="rw-etiqueta">Tu dirección</span>
+      <div class="rw-direccion"><code id="rw-direccion"></code><button class="rw-copiar" type="button" data-accion="Copiar_Wallet_Registrada">Copiar</button></div>
+      <p class="rw-nota">La generación de tu certificado no es inmediata: tu NFT llegará a esta wallet dentro de 2 a 3 días hábiles.</p>
+      <p class="rw-nota" id="rw-nota-frase" hidden>Guarda bien tu frase de recuperación de MetaMask: es la única forma de volver a acceder a esta wallet.</p>
+      <button class="rw-boton rw-boton--borde" type="button" data-accion="Reiniciar_Registro_Wallet">Registrar otra</button>
+    </section>
+  </main>
+
+  <footer class="rw-pie">
+    <span>Created by <a href="https://www.blockfinityadvisors.com/" target="_blank" rel="noopener noreferrer">Blockfinity Advisors</a></span>
+    <a href="/">Panel de certificados</a>
+  </footer>
+</section>
+
+<!-- =============================================================
+     VISTA · APLICACIÓN
+     ============================================================= -->
+<section class="vista" id="vista-app">
+  <div class="armazon">
+    <nav class="lateral">
+      <div class="marca"><span class="marca-logo">NFT</span><span>Certificados NFT</span></div>
+
+      <div class="menu-grupo" data-rol="admin">
+        <span class="menu-titulo">Principal</span>
+        <button class="menu-item" type="button" data-pantalla-ir="instituciones">Instituciones</button>
+        <button class="menu-item" type="button" data-pantalla-ir="emisiones">Emisiones</button>
+        <button class="menu-item" type="button" data-pantalla-ir="solicitudes">Solicitudes de lotes <span class="etiqueta etiqueta--aviso" id="menu-lotes-pendientes" hidden></span></button>
+        <button class="menu-item" type="button" data-pantalla-ir="participantes">Registros de wallet</button>
+        <button class="menu-item" type="button" data-pantalla-ir="asistente">Nueva emisión</button>
+        <span class="menu-titulo">Sistema</span>
+        <button class="menu-item" type="button" data-pantalla-ir="configuracion">Configuración</button>
+        <button class="menu-item" type="button" data-pantalla-ir="verificar">Verificar certificado</button>
       </div>
 
-      <div class="nav-label" data-role="viewer">Principal</div>
-      <button class="nav-item" data-role="viewer" data-screen="panel" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9M10 19V4M16 19v-7M22 19H2"/></svg></span>
-        Dashboard
-      </button>
-      <button class="nav-item" data-role="viewer" data-screen="alumnos" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16.5 6.2a3 3 0 0 1 0 5.6M18 20a6 6 0 0 0-2.2-4.6"/></svg></span>
-        Estudiantes
-      </button>
+      <div class="menu-grupo" data-rol="viewer">
+        <span class="menu-titulo">Institución</span>
+        <button class="menu-item" type="button" data-pantalla-ir="tablero">Dashboard</button>
+        <button class="menu-item" type="button" data-pantalla-ir="estudiantes">Estudiantes y lotes</button>
+        <button class="menu-item" type="button" data-pantalla-ir="verificar">Verificar certificado</button>
+      </div>
 
-      <div class="nav-label" data-role="student">Mis certificados</div>
-      <button class="nav-item" data-role="student" data-screen="certs" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="13" rx="2"/><circle cx="9" cy="10.5" r="2.4"/><path d="M14 9h4M14 12.5h3"/><path d="M7 20h10"/></svg></span>
-        Certificados
-      </button>
-      <button class="nav-item" data-role="student" data-screen="verify" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/><path d="m7.8 10.6 1.9 1.9 3.5-3.6"/></svg></span>
-        Verificar certificado
-      </button>
+      <div class="menu-grupo" data-rol="student">
+        <span class="menu-titulo">Estudiante</span>
+        <button class="menu-item" type="button" data-pantalla-ir="certificados">Mis certificados</button>
+        <button class="menu-item" type="button" data-pantalla-ir="verificar">Verificar certificado</button>
+      </div>
 
-      <div class="nav-label" data-role="admin">Principal</div>
-      <button class="nav-item" data-role="admin" data-screen="instituciones" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V10l7-4 7 4v11M9 21v-5h6v5"/></svg></span>
-        Instituciones
-      </button>
-      <button class="nav-item" data-role="admin" data-screen="dashboard" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></span>
-        Emisiones
-      </button>
-      <button class="nav-item" data-role="admin" data-screen="solicitudes" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12h7M9 16h5"/></svg></span>
-        Solicitudes de lotes
-        <span class="tag warn" data-sol-badge style="margin-left:auto;" hidden></span>
-      </button>
-      <button class="nav-item" data-role="admin" data-screen="wizard" data-reset-wizard type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></span>
-        Nueva emisión
-      </button>
-
-      <div class="nav-label" data-role="admin">Sistema</div>
-      <button class="nav-item" data-role="admin" data-screen="config" type="button">
-        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2l-.4-2.6H10.9l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6a7 7 0 0 0 0 2.4l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2l.4 2.6h2.2l.4-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2Z"/></svg></span>
-        Configuración
-      </button>
-
-      <div class="sidebar-foot">
-        <div class="sidebar-user">
-          <span class="avatar" id="user-initials">—</span>
-          <span><span class="nm" id="user-name">—</span><br /><span class="rl" id="user-role">—</span></span>
-        </div>
-        <button class="btn btn--block" id="logout-btn" type="button" style="margin-top:10px;">Cerrar sesión</button>
+      <div class="lateral-pie">
+        <div class="usuario"><span class="avatar" id="usuario-iniciales">—</span><span><b id="usuario-nombre">Visitante</b><small id="usuario-rol">Acceso público</small></span></div>
+        <button class="boton boton--bloque" type="button" data-accion="Cerrar_Sesion" id="boton-sesion">Cerrar sesión</button>
       </div>
     </nav>
 
-    <!-- MAIN -->
-    <div class="main">
-      <header class="topbar">
-        <span class="page-title" id="topbar-title">Inicio</span>
-        <span class="crumb" id="topbar-crumb"></span>
-        <span class="spacer"></span>
-        <span class="net-pill"><span class="led"></span> Polygon · testnet</span>
+    <div class="principal">
+      <header class="barra-superior">
+        <button class="boton boton--fantasma menu-movil" type="button" data-accion="Alternar_Menu">☰</button>
+        <span class="barra-titulo" id="barra-titulo">Panel</span>
+        <span class="espaciador"></span>
+        <div class="selector-red" data-rol="admin">
+          <button type="button" data-accion="Cambiar_Modo_Red" data-modo="test">Test</button>
+          <button type="button" data-accion="Cambiar_Modo_Red" data-modo="main">Main</button>
+        </div>
+        <span class="pastilla-red" id="pastilla-red"><span class="led"></span><span id="pastilla-red-texto">Red</span></span>
       </header>
 
-      <div class="content" id="content">
+      <div class="banda-red" id="banda-red" hidden></div>
 
-        <!-- ===================== INSTITUCIONES (admin) ===================== -->
-        <div class="screen" data-screen-panel="instituciones" data-screen-label="Instituciones">
-          <div class="page-head head-row">
-            <div>
-              <h1>Instituciones</h1>
-              <p>Cada institución es un perfil de consulta con su propia wallet. Los certificados se emiten y envían desde ella.</p>
-            </div>
-            <button class="btn btn--primary btn--lg" id="inst-new-btn" type="button"><span class="ar">＋</span> Nueva institución</button>
+      <div class="contenido">
+
+        <!-- ================= INSTITUCIONES (admin) ================= -->
+        <div class="pantalla" data-pantalla="instituciones">
+          <div class="cabecera fila-cabecera">
+            <div><h1>Instituciones</h1><p>Cada institución tiene su cuenta de consulta, su lista de estudiantes y su crédito.</p></div>
+            <button class="boton boton--primario boton--grande" type="button" data-accion="Mostrar_Formulario_Institucion">＋ Nueva institución</button>
           </div>
 
-          <div class="stat-grid" style="margin-bottom:22px;">
-            <div class="stat"><div class="k">Instituciones operativas</div><div class="v" id="st-inst-count">—</div></div>
-            <div class="stat"><div class="k">Certificados emitidos</div><div class="v" id="st-inst-certs">—</div></div>
-            <div class="stat"><div class="k">Crédito agregado</div><div class="v"><span id="st-inst-gas">—</span> <small>USD</small></div></div>
-            <div class="stat"><div class="k">Requieren atención</div><div class="v" id="st-inst-alerts">—</div></div>
+          <div class="grilla-datos">
+            <div class="dato"><span>Instituciones</span><b id="inst-total">0</b></div>
+            <div class="dato"><span>Certificados (modo activo)</span><b id="inst-certificados">0</b></div>
+            <div class="dato"><span>Crédito agregado</span><b id="inst-credito">$0.00</b></div>
+            <div class="dato"><span>Solicitudes de acceso</span><b id="inst-solicitudes">0</b></div>
           </div>
 
-          <!-- alta de institución / perfil de consulta -->
-          <div class="card pad" id="inst-form" style="margin-bottom:22px;" hidden>
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:4px;">
-              <h2 style="font-size:16px;font-weight:600;margin:0;">Nueva institución y perfil de consulta</h2>
-              <a class="link" id="inst-form-cancel">Cancelar</a>
+          <form class="tarjeta relleno separado" id="formulario-institucion" data-formulario="Crear_Institucion" hidden>
+            <h2>Nueva institución</h2>
+            <div class="grilla-2">
+              <label class="campo"><span>Nombre</span><input class="entrada" name="nombre" placeholder="Universidad Nacional · Derecho" required /></label>
+              <label class="campo"><span>Etiqueta</span><input class="entrada mono" name="etiqueta" placeholder="UNI-DER" required /></label>
+              <label class="campo"><span>Responsable</span><input class="entrada" name="responsable_nombre" placeholder="Lic. Nombre Apellido" /></label>
+              <label class="campo"><span>Correo del responsable</span><input class="entrada" name="responsable_correo" type="email" placeholder="nombre@institucion.edu" /></label>
+              <label class="campo"><span>Wallet de la institución</span><input class="entrada mono" name="wallet" placeholder="0x…" /></label>
+              <label class="campo"><span>Crédito inicial (USD)</span><input class="entrada mono" name="credito_usd" type="number" min="0" step="0.01" value="0" /></label>
             </div>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 22px;">Al guardar se crea la etiqueta que los usuarios comunes eligen al registrarse y la cuenta de consulta asociada.</p>
-            <div class="grid2" style="max-width:760px;">
-              <div class="field">
-                <label class="label" for="nf-name">Nombre de la institución</label>
-                <input class="input" id="nf-name" type="text" placeholder="Universidad Nacional · Derecho" />
-              </div>
-              <div class="field">
-                <label class="label" for="nf-label">Etiqueta (label)</label>
-                <input class="input mono" id="nf-label" type="text" placeholder="UNI-DER" />
-              </div>
-              <div class="field">
-                <label class="label" for="nf-user">Responsable de consulta</label>
-                <input class="input" id="nf-user" type="text" placeholder="Lic. Nombre Apellido" />
-              </div>
-              <div class="field">
-                <label class="label" for="nf-mail">Correo del responsable</label>
-                <input class="input" id="nf-mail" type="text" placeholder="nombre@institucion.edu" />
-              </div>
+            <div class="acciones-derecha">
+              <button class="boton boton--fantasma" type="button" data-accion="Ocultar_Formulario_Institucion">Cancelar</button>
+              <button class="boton boton--primario" type="submit">Crear institución</button>
             </div>
-            <div class="field" style="max-width:760px;">
-              <label class="label" for="nf-wallet">Wallet registrada de la institución</label>
-              <input class="input mono" id="nf-wallet" type="text" placeholder="0x…" />
-              <p class="helper">Desde esta wallet se mintean y envían los NFTs de la institución. Puede registrarse después.</p>
-            </div>
-            <hr class="sep" />
-            <div style="display:flex;justify-content:flex-end;gap:10px;">
-              <button class="btn btn--ghost" id="inst-form-cancel2" type="button">Cancelar</button>
-              <button class="btn btn--primary" id="inst-save" type="button">Crear institución</button>
-            </div>
+          </form>
+
+          <div class="tarjeta separado" id="tarjeta-solicitudes-acceso" hidden>
+            <div class="relleno"><h2>Solicitudes de acceso</h2><p class="ayuda">Cuentas de institución que esperan aprobación.</p></div>
+            <div class="tabla-envoltura"><table class="tabla">
+              <thead><tr><th>Solicitante</th><th>Institución</th><th>Fecha</th><th></th></tr></thead>
+              <tbody id="tabla-solicitudes-acceso"></tbody>
+            </table></div>
           </div>
 
-          <!-- solicitudes de acceso -->
-          <div class="card" id="reqs-card" style="overflow:hidden;margin-bottom:22px;" hidden>
-            <div class="pad" style="padding-bottom:0;">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-                <h2 style="font-size:16px;font-weight:600;margin:0;">Solicitudes de acceso</h2>
-                <span class="tag warn"><span id="reqs-count">0</span> pendientes</span>
-              </div>
-              <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Usuarios que se registraron y eligieron su institución de procedencia.</p>
-            </div>
-            <table class="table">
-              <thead><tr><th>Solicitante</th><th>Institución elegida</th><th>Fecha</th><th></th></tr></thead>
-              <tbody id="reqs-body"></tbody>
+          <div class="tarjeta tabla-envoltura">
+            <table class="tabla">
+              <thead><tr><th>Institución</th><th>Wallet</th><th class="derecha">Crédito</th><th class="derecha">Certificados</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="tabla-instituciones"></tbody>
             </table>
           </div>
-
-          <div class="card txcard">
-            <table class="table">
-              <thead><tr><th>Institución y perfil de consulta</th><th>Wallet registrada</th><th style="text-align:right;">Crédito · certificados</th><th>Estado</th><th></th></tr></thead>
-              <tbody id="inst-body"></tbody>
-            </table>
-          </div>
-          <p class="helper" style="margin-top:10px;">“Emitir” abre el asistente con la wallet de esa institución preseleccionada.</p>
         </div>
 
-        <!-- ===================== DETALLE DE INSTITUCIÓN (admin) ===================== -->
-        <div class="screen" data-screen-panel="inst" data-screen-label="Detalle de institución">
-          <div class="page-head head-row">
+        <!-- ================= DETALLE DE INSTITUCIÓN (admin) ================= -->
+        <div class="pantalla" data-pantalla="institucion">
+          <div class="cabecera fila-cabecera">
             <div>
-              <a class="link" data-goto="instituciones" style="font-size:13px;">← Instituciones</a>
-              <h1 id="dt-name" style="margin-top:8px;">—</h1>
-              <p>Etiqueta <span class="mono" id="dt-label">—</span> · perfil de consulta <span id="dt-user">—</span></p>
+              <a class="enlace" data-pantalla-ir="instituciones">← Instituciones</a>
+              <h1 id="det-nombre">—</h1>
+              <p>Etiqueta <span class="mono" id="det-etiqueta">—</span> · responsable <span id="det-responsable">—</span></p>
             </div>
-            <div style="display:flex;gap:10px;align-items:center;">
-              <span id="dt-status"></span>
-              <button class="btn btn--primary btn--lg" id="dt-emit" data-goto="wizard" data-reset-wizard type="button"><span class="ar">＋</span> Emitir certificados</button>
-            </div>
+            <button class="boton boton--primario boton--grande" type="button" data-accion="Emitir_Para_Institucion">＋ Emitir certificados</button>
           </div>
-
-          <div class="stat-grid" style="margin-bottom:22px;">
-            <div class="stat"><div class="k">Certificados emitidos</div><div class="v" id="dt-certs">—</div></div>
-            <div class="stat"><div class="k">Entregados</div><div class="v" id="dt-deliv">—</div></div>
-            <div class="stat"><div class="k">Crédito disponible</div><div class="v" id="dt-gas">—</div></div>
+          <div class="grilla-datos">
+            <div class="dato"><span>Certificados (modo activo)</span><b id="det-certificados">0</b></div>
+            <div class="dato"><span>Entregados</span><b id="det-entregados">0</b></div>
+            <div class="dato"><span>Crédito disponible</span><b id="det-credito">$0.00</b></div>
           </div>
-
-          <div class="card pad" style="margin-bottom:22px;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">Wallet y contacto</h2>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 20px;">Los NFTs de esta institución se mintean y se envían desde su wallet registrada.</p>
-            <dl class="kvs" style="grid-template-columns:200px 1fr;max-width:620px;">
-              <dt>Wallet registrada</dt><dd class="mono" id="dt-wallet">—</dd>
-              <dt>Red blockchain</dt><dd id="dt-net">—</dd>
-              <dt>Correo del responsable</dt><dd class="mono" id="dt-email">—</dd>
+          <div class="tarjeta relleno separado">
+            <h2>Datos y crédito</h2>
+            <dl class="pares">
+              <dt>Wallet registrada</dt><dd class="mono" id="det-wallet">—</dd>
+              <dt>Correo del responsable</dt><dd id="det-correo">—</dd>
+              <dt>Estado</dt><dd id="det-estado">—</dd>
             </dl>
-            <hr class="sep" />
-            <div style="display:flex;justify-content:flex-end;gap:10px;">
-              <button class="btn" data-toast="Perfil de consulta suspendido" type="button">Suspender perfil</button>
-              <button class="btn" data-toast="Cambios guardados" type="button">Editar institución</button>
-            </div>
+            <form class="fila-formulario" data-formulario="Recargar_Credito">
+              <label class="campo"><span>Recargar crédito (USD, negativo para descontar)</span><input class="entrada mono" name="monto" type="number" step="0.01" placeholder="100.00" required /></label>
+              <button class="boton" type="submit">Aplicar</button>
+            </form>
           </div>
-
-          <div class="card txcard">
-            <div class="pad" style="padding-bottom:0;">
-              <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">Certificados de esta institución</h2>
-              <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Trazabilidad por estudiante en las dos fases del envío.</p>
-            </div>
-            <table class="table">
-              <thead><tr><th>Estudiante</th><th>Lote</th><th>Fase 1 · Minteo</th><th>Fase 2 · Envío</th></tr></thead>
-              <tbody>
-                <tr><td class="nm">Ana García López</td><td class="mono">Egreso-Derecho-2026A</td><td><span class="tag ok">en wallet</span></td><td><span class="tag ok">recibido</span></td></tr>
-                <tr><td class="nm">Carlos Ramírez Soto</td><td class="mono">Egreso-Derecho-2026A</td><td><span class="tag ok">en wallet</span></td><td><span class="tag ok">recibido</span></td></tr>
-                <tr><td class="nm">José Antonio Pérez</td><td class="mono">Egreso-Derecho-2026A</td><td><span class="tag ok">en wallet</span></td><td><span class="tag ok">recibido</span></td></tr>
-                <tr class="err"><td class="nm">Diego Torres Vela</td><td class="mono">Egreso-Derecho-2026A</td><td><span class="tag err">error de minteo</span></td><td><span class="mono" style="font-size:12px;color:var(--faint);">— no aplica —</span></td></tr>
-                <tr><td class="nm">Sofía Navarro Gil</td><td class="mono">Egreso-Derecho-2026A</td><td><span class="tag ok">en wallet</span></td><td><span class="tag ok">recibido</span></td></tr>
-              </tbody>
-            </table>
-            <p class="helper" style="padding:12px 20px 18px;margin:0;">Mostrando 5 de <span id="dt-certs2">142</span>.</p>
+          <div class="tarjeta">
+            <div class="relleno"><h2>Certificados de esta institución</h2></div>
+            <div class="tabla-envoltura"><table class="tabla">
+              <thead><tr><th>Fecha</th><th>Estudiante</th><th>Token</th><th>Estado</th><th>Enlaces</th></tr></thead>
+              <tbody id="tabla-det-emisiones"></tbody>
+            </table></div>
           </div>
         </div>
 
-        <!-- ===================== EMISIONES ===================== -->
-        <div class="screen" data-screen-panel="dashboard" data-screen-label="Inicio">
-          <div class="page-head head-row">
-            <div>
-              <h1>Emisiones recientes</h1>
-              <p>Historial de lotes emitidos, con la institución y la wallet que los respalda.</p>
-            </div>
-            <button class="btn btn--primary btn--lg" data-goto="wizard" data-reset-wizard type="button"><span class="ar">＋</span> Nueva emisión</button>
+        <!-- ================= EMISIONES (admin) ================= -->
+        <div class="pantalla" data-pantalla="emisiones">
+          <div class="cabecera fila-cabecera">
+            <div><h1>Emisiones</h1><p>Historial de certificados emitidos en el modo de red activo.</p></div>
+            <button class="boton boton--primario boton--grande" type="button" data-pantalla-ir="asistente">＋ Nueva emisión</button>
           </div>
-
-          <div class="stat-grid" style="margin-bottom:22px;">
-            <div class="stat"><div class="k">Certificados emitidos</div><div class="v">482</div></div>
-            <div class="stat"><div class="k">Lotes este año</div><div class="v">14</div></div>
-            <div class="stat"><div class="k">Entregados a estudiantes</div><div class="v">471 <small>/ 482</small></div></div>
+          <div class="grilla-datos">
+            <div class="dato"><span>Certificados</span><b id="emi-total">0</b></div>
+            <div class="dato"><span>Lotes</span><b id="emi-lotes">0</b></div>
+            <div class="dato"><span>Entregados</span><b id="emi-entregados">0</b></div>
+            <div class="dato"><span>Con error</span><b id="emi-errores">0</b></div>
           </div>
-
-          <div class="card" style="overflow:hidden;">
-            <table class="table">
-              <thead><tr><th>Fecha</th><th>Lote</th><th>Institución</th><th style="text-align:right;">Certs.</th><th>Estado</th><th></th></tr></thead>
-              <tbody>
-                <tr><td class="mono">10 jun 2026</td><td class="nm">Egreso-Derecho-2026A</td><td>Universidad Nacional · Derecho<div class="ilabel">UNI-DER</div></td><td class="mono" style="text-align:right;">148</td><td><span class="tag ok">completado</span></td><td style="text-align:right;"><a class="link" data-goto="result">Ver</a></td></tr>
-                <tr><td class="mono">02 jun 2026</td><td class="nm">Diplomado-IA-2026</td><td>Instituto de Innovación · Diplomados<div class="ilabel">INST-IA</div></td><td class="mono" style="text-align:right;">37</td><td><span class="tag err">3 con error</span></td><td style="text-align:right;"><a class="link" data-goto="result">Ver</a></td></tr>
-                <tr><td class="mono">28 may 2026</td><td class="nm">Maestría-Admin-2025B</td><td>Tecnológico Regional · Posgrados<div class="ilabel">TEC-POS</div></td><td class="mono" style="text-align:right;">92</td><td><span class="tag ok">completado</span></td><td style="text-align:right;"><a class="link" data-goto="result">Ver</a></td></tr>
-                <tr><td class="mono">21 may 2026</td><td class="nm">Egreso-Medicina-2026A</td><td>Universidad Nacional · Medicina<div class="ilabel">UNI-MED</div></td><td class="mono" style="text-align:right;">205</td><td><span class="tag ok">completado</span></td><td style="text-align:right;"><a class="link" data-goto="result">Ver</a></td></tr>
-              </tbody>
+          <div class="tarjeta tabla-envoltura">
+            <table class="tabla">
+              <thead><tr><th>Fecha</th><th>Estudiante</th><th>Institución</th><th>Wallet</th><th>Token</th><th>Estado</th><th>Enlaces</th></tr></thead>
+              <tbody id="tabla-emisiones"></tbody>
             </table>
           </div>
         </div>
 
-        <!-- ===================== CONFIGURACIÓN · WALLET ===================== -->
-        <div class="screen" data-screen-panel="config" data-screen-label="Configuración">
-          <div class="page-head">
-            <h1>Configuración</h1>
-            <p>Personaliza la marca de la institución y administra la wallet emisora.</p>
+        <!-- ================= SOLICITUDES DE LOTES (admin) ================= -->
+        <div class="pantalla" data-pantalla="solicitudes">
+          <div class="cabecera"><h1>Solicitudes de lotes</h1><p>Lotes enviados por las instituciones con su plantilla y sus estudiantes. En modo test, aprobar no descuenta crédito.</p></div>
+          <div class="tarjeta tabla-envoltura">
+            <table class="tabla">
+              <thead><tr><th>Institución</th><th>Lote</th><th class="derecha">Costo</th><th class="derecha">Crédito actual</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="tabla-lotes-admin"></tbody>
+            </table>
           </div>
-
-          <!-- MARCA / LOGO -->
-          <div class="card pad" style="margin-bottom:22px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:6px;">
-              <h2 style="font-size:16px;font-weight:600;margin:0;">Marca de la institución</h2>
-              <span class="tag warn">white-label</span>
-            </div>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 20px;">El logo se mostrará en el panel, el inicio de sesión y los documentos generados.</p>
-
-            <div class="field" style="margin-bottom:20px;">
-              <label class="label" for="cfg-instname">Nombre de la institución</label>
-              <input class="input" id="cfg-instname" type="text" placeholder="Universidad…" style="max-width:420px;" />
-            </div>
-
-            <label class="label">Logo de la institución</label>
-            <div class="logo-uploader">
-              <div class="logo-preview" id="logo-preview">
-                <span class="ph-txt">SIN LOGO<br />arrastra o sube<br />un archivo</span>
-              </div>
-              <div class="lu-actions">
-                <input type="file" id="logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden />
-                <button class="btn btn--primary" id="logo-upload-btn" type="button">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" style="margin-right:2px;"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>
-                  Subir logo
-                </button>
-                <button class="btn btn--ghost btn--danger" id="logo-remove-btn" type="button" hidden>Quitar logo</button>
-                <span class="lu-hint">PNG, SVG, JPG o WebP. Recomendado fondo transparente, máx. 1 MB.</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- WALLET -->
-          <div class="card pad">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:6px;">
-              <h2 style="font-size:16px;font-weight:600;margin:0;">Wallet institucional</h2>
-              <span class="net-pill" style="background:var(--ok-weak);border-color:transparent;color:var(--ok);"><span class="led"></span> Conectada</span>
-            </div>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 20px;">Esta wallet recibe los NFTs minteados y los envía a los estudiantes. Debe tener fondos suficientes para el gas de cada emisión.</p>
-
-            <dl class="kvs" style="grid-template-columns:200px 1fr;max-width:560px;">
-              <dt>Alias</dt><dd>Tesorería UNI</dd>
-              <dt>Dirección</dt><dd><span class="addr">0x1D7c…E93a <button class="copy" type="button" data-copy="0x1D7c4f9A2b8E0c5D6a1F3b9C8d7E6f5a4B3cE93a">copiar</button></span></dd>
-              <dt>Red blockchain</dt><dd>Polygon · testnet</dd>
-              <dt>Saldo para gas</dt><dd>12.40 MATIC</dd>
-            </dl>
-
-            <hr class="sep" />
-            <div style="display:flex;justify-content:flex-end;gap:10px;">
-              <button class="btn" type="button">Cambiar wallet</button>
-              <button class="btn btn--primary" data-goto="dashboard" data-toast="Configuración guardada" type="button">Guardar cambios</button>
-            </div>
-          </div>
+          <p class="ayuda">“Emitir” abre el asistente con la plantilla y los estudiantes del lote.</p>
         </div>
 
-        <!-- ===================== WIZARD ===================== -->
-        <div class="screen" data-screen-panel="wizard" data-screen-label="Nueva emisión">
-          <div class="page-head">
-            <h1>Nueva emisión</h1>
-            <p>Carga la plantilla, valida la lista de estudiantes y autoriza el minteo.</p>
-          </div>
-
-          <div class="wizard">
-            <div class="stepper" id="stepper">
-              <div class="step current" data-step="1"><span class="sn">1</span><span class="st"><small>Paso 1</small><b>Plantilla PDF</b></span></div>
-              <div class="step" data-step="2"><span class="sn">2</span><span class="st"><small>Paso 2</small><b>Lista de estudiantes</b></span></div>
-              <div class="step" data-step="3"><span class="sn">3</span><span class="st"><small>Paso 3</small><b>Generación</b></span></div>
-              <div class="step" data-step="4"><span class="sn">4</span><span class="st"><small>Paso 4</small><b>Confirmación</b></span></div>
+        <!-- ================= REGISTROS DE WALLET (admin) ================= -->
+        <div class="pantalla" data-pantalla="participantes">
+          <div class="cabecera fila-cabecera">
+            <div><h1>Registros de wallet</h1><p>Personas que registraron su wallet en <a class="enlace" href="/registro" target="_blank">/registro</a> o <a class="enlace" href="/registroASOBAN" target="_blank">/registroASOBAN</a>.</p></div>
+            <div class="acciones-derecha">
+              <select class="entrada entrada--corta" id="filtro-evento" data-accion-cambio="Cargar_Participantes">
+                <option value="">Todos los módulos</option><option value="foro">Foro</option><option value="asoban">ASOBAN</option>
+              </select>
+              <button class="boton" type="button" data-accion="Exportar_Participantes">↓ Exportar Excel</button>
             </div>
+          </div>
+          <form class="tarjeta relleno separado fila-formulario" data-formulario="Agregar_Participante">
+            <label class="campo"><span>Nombre</span><input class="entrada" name="nombre" required /></label>
+            <label class="campo"><span>Wallet</span><input class="entrada mono" name="wallet" placeholder="0x…" required /></label>
+            <label class="campo"><span>Módulo</span><select class="entrada" name="evento"><option value="foro">Foro</option><option value="asoban">ASOBAN</option></select></label>
+            <button class="boton boton--primario" type="submit">Agregar</button>
+          </form>
+          <div class="tarjeta tabla-envoltura">
+            <table class="tabla">
+              <thead><tr><th><input type="checkbox" data-accion-cambio="Marcar_Todos_Participantes" /></th><th>Fecha</th><th>Nombre</th><th>Wallet</th><th>Tipo</th><th>Módulo</th><th></th></tr></thead>
+              <tbody id="tabla-participantes"></tbody>
+            </table>
+          </div>
+          <p class="ayuda">Exporta los marcados (o todos) y súbelos en el paso 2 de “Nueva emisión”.</p>
+        </div>
 
-            <div class="wizard-body">
+        <!-- ================= ASISTENTE DE EMISIÓN (admin) ================= -->
+        <div class="pantalla" data-pantalla="asistente">
+          <div class="cabecera"><h1>Nueva emisión</h1><p>Plantilla → estudiantes → PDFs base → QR y envío a cada wallet.</p></div>
+          <div class="asistente">
+            <ol class="pasos" id="pasos-asistente">
+              <li data-paso="1"><b>1</b><span>Plantilla PDF</span></li>
+              <li data-paso="2"><b>2</b><span>Estudiantes</span></li>
+              <li data-paso="3"><b>3</b><span>PDFs base</span></li>
+              <li data-paso="4"><b>4</b><span>Confirmación</span></li>
+            </ol>
 
-              <!-- WIZARD STEP 1 -->
-              <div class="wstep active" data-wstep="1">
-                <div class="issuer">
-                  <div class="field" style="margin:0;">
-                    <label class="label" for="wz-inst">Institución emisora</label>
-                    <select class="input" id="wz-inst" data-inst-select data-inst-wallet-only></select>
-                  </div>
-                  <dl class="kvs issuer-kv">
-                    <dt>Wallet registrada</dt><dd class="mono" id="wz-inst-wallet">—</dd>
-                    <dt>Red</dt><dd id="wz-inst-net">—</dd>
-                    <dt>Crédito disponible</dt><dd class="mono" id="wz-inst-gas">—</dd>
+            <div class="asistente-cuerpo">
+              <!-- Paso 1 -->
+              <div data-paso-asistente="1">
+                <div class="grilla-2">
+                  <label class="campo"><span>Institución emisora</span><select class="entrada" id="asis-institucion" data-lista-instituciones data-accion-cambio="Cambiar_Institucion_Asistente"></select></label>
+                  <dl class="pares pares--compacto">
+                    <dt>Red</dt><dd id="asis-red">—</dd>
+                    <dt>Wallet emisora</dt><dd class="mono" id="asis-wallet">—</dd>
                   </dl>
                 </div>
-                <p class="helper" style="margin:-6px 0 22px;">El minteo y el envío se firman con la wallet de la institución seleccionada.</p>
-                <div class="grid2">
-                  <div>
-                    <label class="label">Plantilla del certificado</label>
-                    <div class="card pad filechip">
-                      <span class="fi">PDF</span>
-                      <div style="flex:1;"><div class="fn">plantilla-base.pdf</div><div class="fmeta">1 página · 248 KB</div></div>
-                      <a class="link">Reemplazar</a>
-                    </div>
-                    <p class="helper">Se aceptan PDF de 1 página, tamaño carta u oficio. Los datos de cada estudiante se sobreponen automáticamente.</p>
-                  </div>
-                  <div>
-                    <label class="label">Vista previa</label>
-                    <div class="preview-ph" style="height:260px;"><span class="pl">plantilla-base.pdf<br />vista previa</span></div>
-                  </div>
-                </div>
-                <hr class="sep" />
-                <div class="wizard-foot">
-                  <button class="btn btn--ghost" data-goto="dashboard" type="button">Cancelar</button>
-                  <button class="btn btn--primary btn--lg" data-wnext="2" type="button">Siguiente</button>
+                <div class="banda banda--info" id="asis-lote-info" hidden></div>
+                <label class="archivo">
+                  <input type="file" accept="application/pdf" data-archivo="plantilla" hidden />
+                  <span class="archivo-icono">PDF</span>
+                  <span><b data-archivo-nombre="plantilla">Seleccionar plantilla PDF</b><small>El nombre de cada estudiante se escribe sobre la plantilla; el QR se agrega al emitir.</small></span>
+                </label>
+                <div class="pie-asistente">
+                  <button class="boton boton--fantasma" type="button" data-pantalla-ir="emisiones">Cancelar</button>
+                  <button class="boton boton--primario boton--grande" type="button" data-accion="Ir_Paso_Asistente" data-paso="2">Siguiente</button>
                 </div>
               </div>
 
-              <!-- WIZARD STEP 2 -->
-              <div class="wstep" data-wstep="2">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px;">
-                  <div class="filechip">
-                    <span class="fi">XLS</span>
-                    <div><div class="fn">estudiantes-junio.xlsx</div><div class="fmeta">148 filas leídas · <a class="link">Reemplazar</a></div></div>
-                  </div>
-                  <a class="link" style="font-size:13px;white-space:nowrap;">↓ Descargar plantilla de ejemplo</a>
-                </div>
-                <p class="helper" style="margin-bottom:18px;">Columnas requeridas: <span class="mono">nombre</span> · <span class="mono">datos_estudiante</span> · <span class="mono">wallet_destino</span>.</p>
-
-                <div class="summary-pill" style="margin-bottom:16px;">
-                  <span class="num-ok"><b>142</b> válidas</span><span class="div"></span>
-                  <span class="num-err"><b>6</b> con error</span><span class="div"></span>
-                  <span style="color:var(--muted);">148 totales</span>
-                </div>
-
-                <div class="card" style="overflow:hidden;">
-                  <table class="table">
-                    <thead><tr><th style="width:46px;">#</th><th>Nombre</th><th>Wallet destino</th><th>Estado</th></tr></thead>
-                    <tbody>
-                      <tr><td class="mono">1</td><td class="nm">Ana García López</td><td class="mono">0x4F2a…9c1B</td><td><span class="tag ok">válida</span></td></tr>
-                      <tr><td class="mono">2</td><td class="nm">Carlos Ramírez Soto</td><td class="mono">0x7B19…aE40</td><td><span class="tag ok">válida</span></td></tr>
-                      <tr class="err"><td class="mono">3</td><td class="nm">María Fernanda Ruiz</td><td class="mono">— vacío —</td><td><span class="tag err">wallet faltante</span></td></tr>
-                      <tr><td class="mono">4</td><td class="nm">José Antonio Pérez</td><td class="mono">0x9C0d…12F7</td><td><span class="tag ok">válida</span></td></tr>
-                      <tr class="err"><td class="mono">5</td><td class="nm">Lucía Hernández Mora</td><td class="mono">0xZZ…inválida</td><td><span class="tag err">formato inválido</span></td></tr>
-                      <tr><td class="mono">6</td><td class="nm">Diego Torres Vela</td><td class="mono">0x2A5e…77Bc</td><td><span class="tag ok">válida</span></td></tr>
-                    </tbody>
+              <!-- Paso 2 -->
+              <div data-paso-asistente="2" hidden>
+                <label class="archivo" id="asis-archivo-excel">
+                  <input type="file" accept=".xlsx,.xls,.csv" data-archivo="excel" hidden />
+                  <span class="archivo-icono">XLS</span>
+                  <span><b data-archivo-nombre="excel">Seleccionar Excel de estudiantes</b><small>Columnas requeridas: <span class="mono">nombre</span> y <span class="mono">wallet</span>.</small></span>
+                </label>
+                <div class="resumen-pastilla" id="asis-resumen-filas"></div>
+                <div class="tarjeta tabla-envoltura tabla-alta">
+                  <table class="tabla">
+                    <thead><tr><th>#</th><th>Nombre</th><th>Wallet</th><th>Estado</th></tr></thead>
+                    <tbody id="tabla-asis-filas"><tr><td colspan="4" class="vacio-celda">Sube un Excel para ver las filas.</td></tr></tbody>
                   </table>
                 </div>
-                <p class="helper" style="margin-top:10px;">Mostrando 6 de 148 · las filas con error están resaltadas y quedarán fuera del lote.</p>
+                <div class="pie-asistente">
+                  <button class="boton boton--fantasma" type="button" data-accion="Ir_Paso_Asistente" data-paso="1">Atrás</button>
+                  <button class="boton boton--primario boton--grande" type="button" data-accion="Preparar_Certificados">Generar PDFs base</button>
+                </div>
+              </div>
 
-                <hr class="sep" />
-                <div class="wizard-foot">
-                  <button class="btn btn--ghost" data-wprev="1" type="button">Atrás</button>
-                  <div style="display:flex;gap:10px;">
-                    <button class="btn" type="button">Corregir y volver a subir</button>
-                    <button class="btn btn--primary btn--lg" data-wnext="3" type="button">Continuar con las 142 válidas</button>
+              <!-- Paso 3 -->
+              <div data-paso-asistente="3" hidden>
+                <div id="asis-generando" class="cargando"><span class="giro"></span> Generando los PDFs y subiéndolos a IPFS…</div>
+                <div id="asis-generados" hidden>
+                  <div class="tarjeta tabla-envoltura tabla-alta">
+                    <table class="tabla">
+                      <thead><tr><th>Estudiante</th><th>Wallet</th><th>PDF base (sin QR)</th></tr></thead>
+                      <tbody id="tabla-asis-generados"></tbody>
+                    </table>
+                  </div>
+                  <div class="pie-asistente">
+                    <button class="boton boton--fantasma" type="button" data-accion="Ir_Paso_Asistente" data-paso="2">Atrás</button>
+                    <button class="boton boton--primario boton--grande" type="button" data-accion="Ir_Paso_Asistente" data-paso="4">Revisé los PDFs, continuar</button>
                   </div>
                 </div>
               </div>
 
-              <!-- WIZARD STEP 3 -->
-              <div class="wstep" data-wstep="3">
-                <!-- generando -->
-                <div id="gen-loading">
-                  <div style="max-width:560px;padding:18px 0;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                      <b style="font-size:15px;">Generando documentos…</b>
-                      <span class="mono" style="color:var(--muted);" id="gen-pct">0%</span>
-                    </div>
-                    <div class="progress" id="gen-progress"><i style="width:0%;"></i></div>
-                    <p class="helper" style="margin-top:12px;">Aplicando los datos sobre la plantilla y firmando cada documento.</p>
-                  </div>
+              <!-- Paso 4 -->
+              <div data-paso-asistente="4" hidden>
+                <div class="tarjeta relleno">
+                  <dl class="pares">
+                    <dt>Institución</dt><dd id="conf-institucion">—</dd>
+                    <dt>Certificados</dt><dd id="conf-cantidad">0</dd>
+                    <dt>Red</dt><dd id="conf-red">—</dd>
+                    <dt>Wallet emisora</dt><dd class="mono" id="conf-wallet">—</dd>
+                  </dl>
                 </div>
-                <!-- listo -->
-                <div id="gen-done" style="display:none;">
-                  <div class="grid2" style="grid-template-columns:320px 1fr;">
-                    <div>
-                      <label class="label">Documentos generados · 142</label>
-                      <div class="card" style="overflow:auto;max-height:300px;">
-                        <table class="table">
-                          <tbody>
-                            <tr><td class="nm">Ana García López</td><td style="text-align:right;"><span class="tag ok">firmado</span></td></tr>
-                            <tr><td class="nm">Carlos Ramírez Soto</td><td style="text-align:right;"><span class="tag ok">firmado</span></td></tr>
-                            <tr><td class="nm">José Antonio Pérez</td><td style="text-align:right;"><span class="tag ok">firmado</span></td></tr>
-                            <tr><td class="nm">Diego Torres Vela</td><td style="text-align:right;"><span class="tag ok">firmado</span></td></tr>
-                            <tr><td class="nm">Sofía Navarro Gil</td><td style="text-align:right;"><span class="tag ok">firmado</span></td></tr>
-                            <tr><td class="muted" style="font-size:12px;color:var(--muted);">…137 más</td><td></td></tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                    <div>
-                      <label class="label">Previsualización · Ana García López</label>
-                      <div class="preview-ph" style="height:320px;">
-                        <span class="pl">certificado-ana-garcia.pdf</span>
-                        <span class="tag ok" style="position:absolute;top:12px;right:12px;background:var(--surface);">documento firmado</span>
-                      </div>
-                    </div>
-                  </div>
-                  <hr class="sep" />
-                  <div class="wizard-foot">
-                    <button class="btn btn--ghost" data-wprev="2" type="button">Atrás</button>
-                    <button class="btn btn--primary btn--lg" data-wnext="4" type="button">Aprobar y continuar</button>
-                  </div>
+                <div class="banda banda--aviso" id="conf-aviso-red"></div>
+                <label class="casilla"><input type="checkbox" id="conf-casilla" data-accion-cambio="Confirmar_Emision" /><span>Revisé los documentos y autorizo la emisión. Por cada estudiante se estampa el QR y luego se envía el NFT a su wallet. No se puede revertir.</span></label>
+                <div class="pie-asistente">
+                  <button class="boton boton--fantasma" type="button" data-accion="Ir_Paso_Asistente" data-paso="3">Atrás</button>
+                  <button class="boton boton--primario boton--grande" type="button" id="boton-emitir" data-accion="Iniciar_Emision" disabled>Emitir en blockchain</button>
                 </div>
               </div>
-
-              <!-- WIZARD STEP 4 -->
-              <div class="wstep" data-wstep="4">
-                <div style="max-width:580px;">
-                  <label class="label">Resumen previo al minteo</label>
-                  <div class="card pad">
-                    <dl class="kvs">
-                      <dt>Institución</dt><dd><span data-inst-name>—</span> · <span class="mono" data-inst-label>—</span></dd>
-                      <dt># de certificados</dt><dd>142</dd>
-                      <dt>Red blockchain</dt><dd>Polygon · testnet</dd>
-                      <dt>Wallet emisora y de envío</dt><dd class="mono" data-inst-wallet>—</dd>
-                      <dt>Costo del lote</dt><dd>142 × $0.77 = <b>$109.34</b></dd>
-                    </dl>
-                  </div>
-
-                  <div class="banner warn" style="margin:18px 0;">
-                    <span class="bi">⚠</span>
-                    <div><b>Operación irreversible.</b> Una vez emitidos en blockchain, los certificados no pueden eliminarse ni revertirse.</div>
-                  </div>
-
-                  <label class="check" style="margin-bottom:22px;">
-                    <input type="checkbox" id="conf-check" />
-                    <span>Confirmo que revisé los documentos y autorizo la emisión de los 142 certificados de <b data-inst-name>—</b>.</span>
-                  </label>
-
-                  <div class="wizard-foot">
-                    <button class="btn btn--ghost" data-wprev="3" type="button">Atrás</button>
-                    <button class="btn btn--primary btn--lg" id="emit-btn" data-goto="progress" type="button" disabled>Emitir en blockchain</button>
-                  </div>
-                </div>
-              </div>
-
             </div>
           </div>
         </div>
 
-        <!-- ===================== PROGRESO ===================== -->
-        <div class="screen" data-screen-panel="progress" data-screen-label="Progreso de emisión">
-          <div class="page-head head-row">
-            <div>
-              <h1>Procesando emisión</h1>
-              <p>Lote de <b data-inst-name>—</b>. Primero se mintean los NFTs a su wallet registrada; luego se envían a los estudiantes.</p>
-            </div>
-            <span class="locknote" id="batch-lock">🔒 No cierres esta pantalla hasta finalizar</span>
+        <!-- ================= PROGRESO (admin) ================= -->
+        <div class="pantalla" data-pantalla="progreso">
+          <div class="cabecera fila-cabecera">
+            <div><h1>Procesando emisión</h1><p>Por cada estudiante: QR con token ID y CID → PDF final a IPFS → NFT a su wallet.</p></div>
+            <span class="aviso-bloqueo" id="prog-bloqueo">No cierres esta pantalla hasta finalizar</span>
           </div>
-
-          <!-- FASE 1 -->
-          <div class="phase" id="phase1">
-            <div class="phh"><span class="pn">1</span><b>Minteo a la wallet de la institución</b><span class="ph-tag tag run" id="p1-tag">en proceso</span></div>
-            <div class="pbody">
-              <p class="sub">Se mintean todos los NFTs hacia la wallet registrada de <b data-inst-name>—</b> · <span class="mono" data-inst-wallet>—</span>. Todavía no se envían a los estudiantes.</p>
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12.5px;color:var(--muted);" class="mono"><span>Minteando…</span><span id="p1-counter">0 de 6</span></div>
-              <div class="progress" id="p1-progress"><i style="width:0%;"></i></div>
-              <div class="card" style="overflow:hidden;margin-top:16px;">
-                <table class="table" id="mint-list">
-                  <thead><tr><th style="width:46px;">#</th><th>Estudiante</th><th>NFT</th><th style="width:210px;">Estado de minteo</th></tr></thead>
-                  <tbody>
-                    <tr class="mrow"><td class="mono">1</td><td class="nm">Ana García López</td><td class="mono">#CERT-0001</td><td><span class="mstate tag wait">en cola</span></td></tr>
-                    <tr class="mrow"><td class="mono">2</td><td class="nm">Carlos Ramírez Soto</td><td class="mono">#CERT-0002</td><td><span class="mstate tag wait">en cola</span></td></tr>
-                    <tr class="mrow"><td class="mono">3</td><td class="nm">José Antonio Pérez</td><td class="mono">#CERT-0003</td><td><span class="mstate tag wait">en cola</span></td></tr>
-                    <tr class="mrow" data-failmint="1"><td class="mono">4</td><td class="nm">Diego Torres Vela</td><td class="mono">#CERT-0004</td><td><span class="mstate tag wait">en cola</span></td></tr>
-                    <tr class="mrow"><td class="mono">5</td><td class="nm">Sofía Navarro Gil</td><td class="mono">#CERT-0005</td><td><span class="mstate tag wait">en cola</span></td></tr>
-                    <tr class="mrow"><td class="mono">6</td><td class="nm">Mateo Aguilar Ríos</td><td class="mono">#CERT-0006</td><td><span class="mstate tag wait">en cola</span></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          <div class="tarjeta relleno separado">
+            <div class="progreso-cabecera"><span id="prog-texto">Iniciando…</span><span class="mono" id="prog-contador">0 de 0</span></div>
+            <div class="barra-progreso"><i id="prog-barra"></i></div>
           </div>
-
-          <!-- CHECKPOINT -->
-          <div class="checkpoint" id="checkpoint" style="display:none;">
-            <div class="ck-txt">
-              <b>Todos los NFTs están en la wallet de <span data-inst-name>—</span> (<span id="ck-count">5</span> de 6).</b>
-              <p>Revisa antes de continuar. La fila #4 falló el minteo y no se enviará.</p>
-            </div>
-            <button class="btn btn--primary btn--lg" id="send-btn" type="button">Enviar NFTs a los estudiantes →</button>
-          </div>
-
-          <!-- FASE 2 -->
-          <div class="phase idle" id="phase2">
-            <div class="phh"><span class="pn">2</span><b>Envío a las wallets de los estudiantes</b><span class="ph-tag tag wait" id="p2-tag">en espera</span></div>
-            <div class="pbody">
-              <p class="sub">Cada NFT se transfiere desde la wallet de la institución a la wallet del estudiante correspondiente.</p>
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:12.5px;color:var(--muted);" class="mono"><span>En espera del punto de control…</span><span id="p2-counter">0 de 5</span></div>
-              <div class="progress" id="p2-progress"><i style="width:0%;"></i></div>
-              <div class="card" style="overflow:hidden;margin-top:16px;">
-                <table class="table" id="send-list">
-                  <thead><tr><th style="width:46px;">#</th><th>Estudiante</th><th>Wallet destino</th><th style="width:210px;">Estado de envío</th></tr></thead>
-                  <tbody>
-                    <tr class="srow"><td class="mono">1</td><td class="nm">Ana García López</td><td class="mono">0x4F2a…9c1B</td><td><span class="sstate tag wait">en cola</span></td></tr>
-                    <tr class="srow"><td class="mono">2</td><td class="nm">Carlos Ramírez Soto</td><td class="mono">0x7B19…aE40</td><td><span class="sstate tag wait">en cola</span></td></tr>
-                    <tr class="srow"><td class="mono">3</td><td class="nm">José Antonio Pérez</td><td class="mono">0x9C0d…12F7</td><td><span class="sstate tag wait">en cola</span></td></tr>
-                    <tr class="srow"><td class="mono">5</td><td class="nm">Sofía Navarro Gil</td><td class="mono">0xB8c1…4D02</td><td><span class="sstate tag wait">en cola</span></td></tr>
-                    <tr class="srow" data-failsend="1"><td class="mono">6</td><td class="nm">Mateo Aguilar Ríos</td><td class="mono">0x6E7f…A1c9</td><td><span class="sstate tag wait">en cola</span></td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <div style="display:flex;justify-content:flex-end;margin-top:18px;">
-            <button class="btn btn--primary btn--lg" id="batch-go" data-goto="result" type="button" disabled>Ver resultado</button>
-          </div>
-        </div>
-
-        <!-- ===================== RESULTADO ===================== -->
-        <div class="screen" data-screen-panel="result" data-screen-label="Resultado y trazabilidad">
-          <div class="page-head head-row">
-            <div>
-              <h1>Resultado y trazabilidad</h1>
-              <p>Lote <span class="mono">Egreso-Derecho-2026A</span> · <span data-inst-name>—</span> · cada hash enlaza al explorador de la red.</p>
-            </div>
-            <div style="display:flex;gap:10px;">
-              <button class="btn" data-toast="Reporte exportado (CSV)" type="button">↓ Exportar reporte</button>
-              <button class="btn btn--primary" data-goto="wizard" data-reset-wizard type="button"><span class="ar">＋</span> Nueva emisión</button>
-            </div>
-          </div>
-
-          <div class="summary-pill" style="margin-bottom:20px;">
-            <span><b>142</b> minteados</span><span class="div"></span>
-            <span class="num-ok"><b>138</b> entregados</span><span class="div"></span>
-            <span class="num-err"><b>4</b> con error</span>
-          </div>
-
-          <div class="card" style="overflow:hidden;">
-            <table class="table">
-              <thead><tr>
-                <th>Estudiante</th>
-                <th>Fase 1 · Minteo → wallet institución</th>
-                <th>Fase 2 · Envío → wallet estudiante</th>
-                <th style="width:160px;">Acción</th>
-              </tr></thead>
-              <tbody>
-                <tr>
-                  <td class="nm">Ana García López</td>
-                  <td><span class="tag ok">en wallet</span><div style="margin-top:6px;"><a class="txlink">0x8d3f…a2e7 ↗</a></div></td>
-                  <td><span class="tag ok">recibido</span><div style="margin-top:6px;"><a class="txlink">0x5b71…d0c4 ↗</a></div></td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td class="nm">Carlos Ramírez Soto</td>
-                  <td><span class="tag ok">en wallet</span><div style="margin-top:6px;"><a class="txlink">0x1a92…c4d8 ↗</a></div></td>
-                  <td><span class="tag ok">recibido</span><div style="margin-top:6px;"><a class="txlink">0x9f30…7ea1 ↗</a></div></td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td class="nm">José Antonio Pérez</td>
-                  <td><span class="tag ok">en wallet</span><div style="margin-top:6px;"><a class="txlink">0x77be…0f31 ↗</a></div></td>
-                  <td><span class="tag ok">recibido</span><div style="margin-top:6px;"><a class="txlink">0xa204…b8f9 ↗</a></div></td>
-                  <td></td>
-                </tr>
-                <tr class="err">
-                  <td class="nm">Diego Torres Vela</td>
-                  <td><span class="tag err">error de minteo</span><div style="margin-top:6px;font-size:12px;color:var(--muted);" class="mono">— tx revertida —</div></td>
-                  <td><span style="font-size:12px;color:var(--faint);" class="mono">— no aplica —</span></td>
-                  <td><button class="btn" style="height:32px;" data-toast="Reintentando minteo…" type="button">Reintentar minteo</button></td>
-                </tr>
-                <tr>
-                  <td class="nm">Sofía Navarro Gil</td>
-                  <td><span class="tag ok">en wallet</span><div style="margin-top:6px;"><a class="txlink">0x3c08…9bb2 ↗</a></div></td>
-                  <td><span class="tag ok">recibido</span><div style="margin-top:6px;"><a class="txlink">0x6d1e…40aa ↗</a></div></td>
-                  <td></td>
-                </tr>
-                <tr class="err">
-                  <td class="nm">Mateo Aguilar Ríos</td>
-                  <td><span class="tag ok">en wallet</span><div style="margin-top:6px;"><a class="txlink">0x2f8c…11b7 ↗</a></div></td>
-                  <td><span class="tag err">error de envío</span><div style="margin-top:6px;font-size:12px;color:var(--muted);" class="mono">— gas insuficiente —</div></td>
-                  <td><button class="btn" style="height:32px;" data-toast="Reintentando envío…" type="button">Reintentar envío</button></td>
-                </tr>
-              </tbody>
+          <div class="tarjeta tabla-envoltura">
+            <table class="tabla">
+              <thead><tr><th>#</th><th>Estudiante</th><th>Token</th><th>Etapa</th><th>Enlaces</th></tr></thead>
+              <tbody id="tabla-progreso"></tbody>
             </table>
           </div>
-          <p class="helper" style="margin-top:10px;">“Reintentar” actúa sobre la fase que falló. Mostrando 6 de 142.</p>
-        </div>
-
-        <!-- ===================== DASHBOARD (rol consulta) ===================== -->
-        <div class="screen" data-screen-panel="panel" data-screen-label="Dashboard">
-          <div class="page-head head-row">
-            <div>
-              <h1>Dashboard</h1>
-              <p>Crédito disponible, avance de los lotes y todas las transacciones de tu institución.</p>
-            </div>
-            <span class="ro-pill">Cuenta de consulta · solo lectura</span>
-          </div>
-
-          <div class="banner warn" style="margin-bottom:22px;">
-            <span class="bi">i</span>
-            <div><b>Esta cuenta no emite certificados.</b> Aquí armas la lista de estudiantes, cargas la plantilla del lote y lo envías al administrador, que autoriza y ejecuta la emisión.</div>
-          </div>
-
-          <div class="stat-grid" style="margin-bottom:22px;">
-            <div class="stat"><div class="k">Crédito disponible</div><div class="v" id="dash-credit">—</div></div>
-            <div class="stat"><div class="k">Consumido · 30 días</div><div class="v">$318.00</div></div>
-            <div class="stat"><div class="k">Certificados recibidos</div><div class="v">471 <small>/ 482</small></div></div>
-            <div class="stat"><div class="k">Solicitudes en curso</div><div class="v" id="dash-open">—</div></div>
-          </div>
-
-          <div class="card pad" style="margin-bottom:22px;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">Crédito de la institución</h2>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 22px;">Blockfinity administra un crédito por institución. Cada certificado solicitado descuenta <span class="mono">$0.77</span>; los costos de red corren por cuenta de la plataforma.</p>
-            <div class="gaswrap">
-              <div>
-                <div class="gasbar"><i style="width:62%;"></i></div>
-                <div class="gaslegend"><span><span id="dash-credit2">—</span> disponibles</span><span>Línea del ciclo · $2,000.00</span></div>
-                <p class="helper" style="margin-top:14px;">A <span class="mono">$0.77</span> por certificado, el crédito alcanza para ≈ <span id="dash-certs-left">—</span> certificados más.</p>
-              </div>
-              <div>
-                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:600;margin-bottom:8px;">Costo del último lote</div>
-                <div class="gasbig">$109.34</div>
-                <div style="font-size:12.5px;color:var(--muted);margin-top:6px;">142 certificados × $0.77</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card pad" style="margin-bottom:22px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:4px;flex-wrap:wrap;">
-              <h2 style="font-size:16px;font-weight:600;margin:0;">Flujo del lote en curso</h2>
-              <span class="mono" style="font-size:12.5px;color:var(--muted);white-space:nowrap;">Egreso-Derecho-2026A</span>
-            </div>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 8px;">Seguimiento de las cuatro etapas. No requiere ninguna acción de tu parte.</p>
-            <div class="flowrail">
-              <div class="flowstep done"><span class="fdot">✓</span><span><span class="ft">Documentos generados y firmados</span><span class="fm">142 de 142 · 10 jun 2026, 09:12</span></span><span class="tag ok">completado</span></div>
-              <div class="flowstep done"><span class="fdot">✓</span><span><span class="ft">Minteo a la wallet institucional</span><span class="fm">141 en wallet · 1 tx revertida</span></span><span class="tag ok">completado</span></div>
-              <div class="flowstep run"><span class="fdot">3</span><span><span class="ft">Envío a las wallets de los estudiantes</span><span class="fm">135 de 141 enviados</span></span><span class="tag run">en proceso</span></div>
-              <div class="flowstep"><span class="fdot">4</span><span><span class="ft">Notificación por correo al estudiante</span><span class="fm">Se dispara al confirmar cada envío</span></span><span class="tag wait">en espera</span></div>
-            </div>
-          </div>
-
-          <div class="card txcard">
-            <div class="pad" style="padding-bottom:0;">
-              <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">Todas las transacciones</h2>
-              <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Cada hash enlaza al explorador de la red.</p>
-            </div>
-            <table class="table">
-              <thead><tr><th>Fecha</th><th>Tipo</th><th>Estudiante</th><th style="text-align:right;">Costo</th><th>Hash</th><th>Estado</th></tr></thead>
-              <tbody>
-                <tr><td class="mono">10 jun · 11:04</td><td>Envío</td><td class="nm">Sofía Navarro Gil</td><td class="mono" style="text-align:right;">$0.77</td><td><a class="txlink">0x6d1e…40aa ↗</a></td><td><span class="tag ok">confirmada</span></td></tr>
-                <tr><td class="mono">10 jun · 11:02</td><td>Envío</td><td class="nm">José Antonio Pérez</td><td class="mono" style="text-align:right;">$0.77</td><td><a class="txlink">0xa204…b8f9 ↗</a></td><td><span class="tag ok">confirmada</span></td></tr>
-                <tr class="err"><td class="mono">10 jun · 11:01</td><td>Envío</td><td class="nm">Mateo Aguilar Ríos</td><td class="mono" style="text-align:right;">—</td><td><span class="mono" style="font-size:12px;color:var(--muted);">— envío fallido —</span></td><td><span class="tag err">fallida</span></td></tr>
-                <tr><td class="mono">10 jun · 10:47</td><td>Minteo</td><td class="nm">Ana García López</td><td class="mono" style="text-align:right;">$0.77</td><td><a class="txlink">0x8d3f…a2e7 ↗</a></td><td><span class="tag ok">confirmada</span></td></tr>
-                <tr class="err"><td class="mono">10 jun · 10:45</td><td>Minteo</td><td class="nm">Diego Torres Vela</td><td class="mono" style="text-align:right;">$0.77</td><td><span class="mono" style="font-size:12px;color:var(--muted);">— tx revertida —</span></td><td><span class="tag err">fallida</span></td></tr>
-                <tr><td class="mono">02 jun · 16:20</td><td>Minteo</td><td class="nm">Lote Diplomado-IA-2026</td><td class="mono" style="text-align:right;">$28.49</td><td><a class="txlink">0xc71b…3e08 ↗</a></td><td><span class="tag ok">confirmada</span></td></tr>
-                <tr><td class="mono">28 may · 09:58</td><td>Recarga de crédito</td><td class="nm">Tesorería UNI</td><td class="mono" style="text-align:right;">+$800.00</td><td><a class="txlink">0x40aa…9f12 ↗</a></td><td><span class="tag ok">confirmada</span></td></tr>
-              </tbody>
-            </table>
-            <p class="helper" style="padding:12px 20px 18px;margin:0;">Mostrando 7 de 1,286 transacciones.</p>
+          <div class="acciones-derecha separado-arriba">
+            <button class="boton boton--primario boton--grande" type="button" id="boton-ver-resultado" data-pantalla-ir="emisiones" disabled>Ver historial</button>
           </div>
         </div>
 
-        <!-- ===================== ESTUDIANTES Y SOLICITUD (rol consulta) ===================== -->
-        <div class="screen" data-screen-panel="alumnos" data-screen-label="Estudiantes">
-          <div class="page-head head-row">
-            <div>
-              <h1>Armar lote y solicitar emisión</h1>
-              <p>Registra a los estudiantes, adjunta la plantilla del certificado y envía la solicitud al administrador.</p>
-            </div>
-            <span class="ro-pill">Cuenta de consulta · sin emisión</span>
-          </div>
+        <!-- ================= CONFIGURACIÓN (admin) ================= -->
+        <div class="pantalla" data-pantalla="configuracion">
+          <div class="cabecera"><h1>Configuración</h1><p>Red de emisión. Las credenciales de cada modo se leen de <span class="mono">backend/.env</span>.</p></div>
+          <div class="grilla-2" id="tarjetas-redes"></div>
+          <p class="ayuda">Test: testnet para probar funciones nuevas sin costo (gas de prueba, no descuenta crédito). Main: red principal con gas y costos reales.</p>
+        </div>
 
-          <div class="card pad" style="margin-bottom:22px;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 18px;">1 · Estudiantes del lote</h2>
-            <div class="addstudent">
-              <div class="field" style="margin:0;">
-                <label class="label" for="st-name">Nombre completo</label>
-                <input class="input" id="st-name" type="text" placeholder="Ana García López" />
-              </div>
-              <div class="field" style="margin:0;">
-                <label class="label" for="st-mail">Correo</label>
-                <input class="input" id="st-mail" type="text" placeholder="ana.garcia@universidad.edu" />
-              </div>
-              <div class="field" style="margin:0;">
-                <label class="label" for="st-wallet">Wallet destino</label>
-                <input class="input mono" id="st-wallet" type="text" placeholder="0x…" />
-              </div>
-              <button class="btn btn--primary" id="st-add" type="button">Agregar</button>
-            </div>
-            <hr class="sep" />
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
-              <p class="helper" style="margin:0;">También puedes cargar un archivo con las columnas <span class="mono">nombre</span> · <span class="mono">correo</span> · <span class="mono">wallet_destino</span>.</p>
-              <button class="btn" data-toast="Selecciona un archivo .xlsx o .csv" type="button">↑ Importar lista</button>
-            </div>
+        <!-- ================= DASHBOARD (institución) ================= -->
+        <div class="pantalla" data-pantalla="tablero">
+          <div class="cabecera fila-cabecera">
+            <div><h1 id="tab-nombre">Dashboard</h1><p>Crédito, lotes y certificados de tu institución.</p></div>
+            <span class="pastilla">Cuenta de consulta</span>
           </div>
-
-          <div class="summary-pill" style="margin-bottom:16px;">
-            <span class="num-ok"><b id="st-ok">0</b> listas para solicitar</span><span class="div"></span>
-            <span class="num-err"><b id="st-bad">0</b> con wallet inválida</span><span class="div"></span>
-            <span style="color:var(--muted);"><b id="st-total">0</b> en la tabla</span>
+          <div class="banda banda--info separado">Esta cuenta no emite certificados: arma el lote en “Estudiantes y lotes” y el administrador lo autoriza y emite.</div>
+          <div class="grilla-datos">
+            <div class="dato"><span>Crédito disponible</span><b id="tab-credito">$0.00</b></div>
+            <div class="dato"><span>Certificados emitidos</span><b id="tab-certificados">0</b></div>
+            <div class="dato"><span>Lotes pendientes</span><b id="tab-pendientes">0</b></div>
           </div>
+          <div class="tarjeta">
+            <div class="relleno"><h2>Lotes solicitados</h2></div>
+            <div class="tabla-envoltura"><table class="tabla">
+              <thead><tr><th>Fecha</th><th>Lote</th><th class="derecha">Certificados</th><th class="derecha">Costo</th><th>Plantilla</th><th>Estado</th></tr></thead>
+              <tbody id="tabla-lotes-institucion"></tbody>
+            </table></div>
+          </div>
+        </div>
 
-          <div class="card txcard" style="margin-bottom:22px;">
-            <table class="table">
-              <thead><tr><th>Nombre</th><th>Correo</th><th>Wallet destino</th><th>Estado</th><th></th></tr></thead>
-              <tbody id="st-body"></tbody>
+        <!-- ================= ESTUDIANTES Y LOTES (institución) ================= -->
+        <div class="pantalla" data-pantalla="estudiantes">
+          <div class="cabecera"><h1>Estudiantes y lotes</h1><p>Registra a los estudiantes, adjunta la plantilla y envía el lote al administrador.</p></div>
+          <form class="tarjeta relleno separado fila-formulario" data-formulario="Agregar_Estudiante">
+            <label class="campo"><span>Nombre completo</span><input class="entrada" name="nombre" placeholder="Ana García López" required /></label>
+            <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" placeholder="ana@universidad.edu" /></label>
+            <label class="campo"><span>Wallet</span><input class="entrada mono" name="wallet" placeholder="0x…" /></label>
+            <button class="boton boton--primario" type="submit">Agregar</button>
+          </form>
+          <div class="resumen-pastilla" id="est-resumen"></div>
+          <div class="tarjeta tabla-envoltura separado">
+            <table class="tabla">
+              <thead><tr><th>Nombre</th><th>Correo</th><th>Wallet</th><th>Estado</th><th></th></tr></thead>
+              <tbody id="tabla-estudiantes"></tbody>
             </table>
           </div>
+          <form class="tarjeta relleno" data-formulario="Solicitar_Lote">
+            <h2>Solicitar lote</h2>
+            <div class="grilla-2">
+              <label class="campo"><span>Nombre del lote</span><input class="entrada" name="nombre" placeholder="Egreso-Derecho-2026B" required /></label>
+              <label class="archivo archivo--compacto">
+                <input type="file" name="plantilla" accept="application/pdf" data-archivo="plantilla_lote" hidden />
+                <span class="archivo-icono">PDF</span>
+                <span><b data-archivo-nombre="plantilla_lote">Adjuntar plantilla PDF</b><small>El administrador emitirá el lote con esta plantilla.</small></span>
+              </label>
+            </div>
+            <div class="caja-costo">
+              <div><span>Estudiantes con wallet válida</span><b id="costo-cantidad">0</b></div>
+              <div><span>Precio por certificado</span><b id="costo-unitario">$0.77</b></div>
+              <div class="caja-costo-total"><span>Costo del lote</span><b id="costo-total">$0.00</b></div>
+              <div><span>Crédito disponible</span><b id="costo-credito">$0.00</b></div>
+            </div>
+            <div class="acciones-derecha"><button class="boton boton--primario boton--grande" type="submit">Enviar al administrador</button></div>
+          </form>
+        </div>
 
-          <div class="card pad" style="margin-bottom:22px;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">2 · Plantilla del certificado</h2>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">El archivo viaja junto con la solicitud: el administrador emite este lote con esa plantilla.</p>
-            <input type="file" id="tpl-input" accept="application/pdf,image/png,image/jpeg" hidden />
-            <div class="tplslot empty" id="tpl-slot"></div>
-            <p class="helper">PDF de 1 página (también PNG o JPG). Los datos de cada estudiante se sobreponen automáticamente.</p>
+        <!-- ================= MIS CERTIFICADOS (estudiante) ================= -->
+        <div class="pantalla" data-pantalla="certificados">
+          <div class="cabecera fila-cabecera">
+            <div><h1>Mis certificados</h1><p>Certificados NFT emitidos a tu wallet.</p></div>
+            <span class="pastilla">Cuenta de estudiante</span>
           </div>
-
-          <div class="card pad" style="margin-bottom:22px;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">3 · Costo y envío</h2>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 20px;">El costo se descuenta del crédito de la institución cuando el administrador autoriza el lote.</p>
-            <div class="field" style="max-width:460px;">
-              <label class="label" for="req-lote">Nombre del lote</label>
-              <input class="input" id="req-lote" type="text" placeholder="Egreso-Derecho-2026B" />
-            </div>
-            <div class="costbox">
-              <div class="costrow"><span>Certificados con wallet válida</span><b id="cost-count">0</b></div>
-              <div class="costrow"><span>Precio por certificado</span><b id="cost-unit">$0.77</b></div>
-              <div class="costrow total"><span>Costo del lote</span><b id="cost-total">$0.00</b></div>
-              <div class="costrow"><span>Crédito disponible</span><b id="cost-credit">$0.00</b></div>
-              <div class="costrow after"><span>Crédito restante tras la autorización</span><b id="cost-after">$0.00</b></div>
-            </div>
-            <div class="banner warn" id="cost-warn" style="margin:18px 0 0;" hidden>
-              <span class="bi">⚠</span>
-              <div><b>Crédito insuficiente.</b> Solicita una recarga al administrador antes de enviar este lote.</div>
-            </div>
-            <hr class="sep" />
-            <div class="reqfoot">
-              <p class="helper" style="margin:0;" id="req-hint">Se enviará al administrador para su autorización.</p>
-              <button class="btn btn--primary btn--lg" id="req-send" type="button" disabled>Solicitar</button>
-            </div>
-          </div>
-
-          <div class="card txcard">
-            <div class="pad" style="padding-bottom:0;">
-              <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">Lotes solicitados</h2>
-              <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Registro de cada solicitud enviada, con su plantilla y su costo.</p>
-            </div>
-            <table class="table">
-              <thead><tr><th>Fecha</th><th>Lote</th><th style="text-align:right;">Certs.</th><th style="text-align:right;">Costo</th><th>Plantilla</th><th>Estado</th></tr></thead>
-              <tbody id="bat-body"></tbody>
-            </table>
-            <p class="helper" id="bat-empty" style="padding:16px 20px;margin:0;" hidden>Todavía no has enviado ningún lote.</p>
+          <form class="tarjeta relleno separado fila-formulario" data-formulario="Guardar_Mi_Wallet">
+            <label class="campo"><span>Dirección de tu wallet</span><input class="entrada mono" name="wallet" id="mi-wallet" placeholder="0x…" required /></label>
+            <button class="boton boton--primario" type="submit">Guardar dirección</button>
+          </form>
+          <div class="grilla-certificados" id="grilla-certificados"></div>
+          <div class="vacio" id="certificados-vacio" hidden>
+            <b>Esta wallet aún no tiene certificados</b>
+            <span>Cuando tu institución emita tu certificado aparecerá aquí. Verifica que la dirección sea la que registraste.</span>
           </div>
         </div>
 
-        <!-- ===================== SOLICITUDES DE LOTES (admin) ===================== -->
-        <div class="screen" data-screen-panel="solicitudes" data-screen-label="Solicitudes de lotes">
-          <div class="page-head">
-            <h1>Solicitudes de lotes</h1>
-            <p>Lotes enviados por las instituciones desde su panel de consulta, con su plantilla y el costo que se les cargará.</p>
+        <!-- ================= VERIFICACIÓN PÚBLICA ================= -->
+        <div class="pantalla" data-pantalla="verificar">
+          <div class="cabecera fila-cabecera">
+            <div><h1>Verificación pública</h1><p>Cualquier persona puede comprobar un certificado, sin iniciar sesión ni conectar una wallet.</p></div>
+            <a class="enlace" data-accion="Volver_Al_Acceso" data-solo-invitado>Iniciar sesión →</a>
           </div>
-
-          <div class="stat-grid" style="margin-bottom:22px;">
-            <div class="stat"><div class="k">Solicitudes pendientes</div><div class="v" id="sol-count">0</div></div>
-            <div class="stat"><div class="k">Certificados por autorizar</div><div class="v" id="sol-certs">0</div></div>
-            <div class="stat"><div class="k">Importe pendiente</div><div class="v" id="sol-total">$0.00</div></div>
-          </div>
-
-          <div class="card txcard">
-            <table class="table">
-              <thead><tr><th>Institución</th><th>Lote</th><th style="text-align:right;">Costo</th><th style="text-align:right;">Crédito actual</th><th>Plantilla</th><th>Estado</th><th></th></tr></thead>
-              <tbody id="sol-body"></tbody>
-            </table>
-            <p class="helper" id="sol-empty" style="padding:16px 20px;margin:0;" hidden>No hay solicitudes registradas.</p>
-          </div>
-          <p class="helper" style="margin-top:10px;">Al autorizar se descuenta el importe del crédito de la institución; “Emitir” abre el asistente con su wallet preseleccionada.</p>
-        </div>
-
-        <!-- ===================== CERTIFICADOS DEL ESTUDIANTE ===================== -->
-        <div class="screen" data-screen-panel="certs" data-screen-label="Certificados del estudiante">
-          <div class="page-head head-row">
-            <div>
-              <h1>Mis certificados</h1>
-              <p>Certificados NFT recibidos en tu wallet. Cada uno enlaza a su transacción en la red.</p>
+          <form class="tarjeta relleno separado" data-formulario="Verificar_Certificado">
+            <h2>Buscar el certificado</h2>
+            <p class="ayuda">Escanea el QR del PDF o escribe el Token ID, el CID de IPFS, el hash de la transacción o la wallet.</p>
+            <div class="buscador">
+              <input class="entrada mono" name="consulta" id="ver-consulta" placeholder="12 · Qm… / bafy… · URL del QR" />
+              <select class="entrada entrada--corta" name="red" id="ver-red"><option value="">Red activa</option><option value="test">Test</option><option value="main">Main</option></select>
+              <button class="boton boton--primario boton--grande" type="submit">Verificar</button>
             </div>
-            <span class="ro-pill">Cuenta de estudiante</span>
-          </div>
+          </form>
 
-          <div class="card pad" style="margin-bottom:22px;">
-            <div class="wb-ident">
-              <span class="blockie"></span>
-              <span>
-                <span class="nm">Wallet conectada</span>
-                <span class="sub">Los certificados se consultan directamente en el contrato con esta dirección.</span>
-              </span>
-            </div>
-            <div class="walletbar">
-              <div class="field" style="margin:0;">
-                <label class="label" for="sw-addr">Dirección de la wallet</label>
-                <div class="wb-field">
-                  <input class="input mono" id="sw-addr" type="text" placeholder="0x…" />
-                  <button class="btn" id="sw-copy" type="button" data-copy="">Copiar</button>
-                </div>
-              </div>
-              <div class="wb-actions">
-                <button class="btn btn--primary" id="sw-save" type="button">Guardar dirección</button>
-              </div>
-            </div>
-            <p class="helper" id="sw-net">Es la wallet que registraste ante tu institución.</p>
-          </div>
+          <div class="vacio" id="ver-espera"><b>Sin resultados todavía</b><span>El resultado de la verificación aparecerá aquí.</span></div>
 
-          <div class="stat-grid" style="margin-bottom:22px;">
-            <div class="stat"><div class="k">Certificados en la wallet</div><div class="v" id="sc-count">0</div></div>
-            <div class="stat"><div class="k">Vigentes</div><div class="v" id="sc-valid">0</div></div>
-            <div class="stat"><div class="k">Revocados</div><div class="v" id="sc-rev">0</div></div>
-          </div>
-
-          <div class="certgrid" id="sc-grid"></div>
-
-          <div class="empty" id="sc-empty" hidden>
-            <div class="ei"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></div>
-            <div class="et">Esta wallet aún no tiene certificados</div>
-            <div class="es">Cuando tu institución emita y envíe tu certificado, aparecerá aquí automáticamente.<br />Verifica que la dirección sea la que registraste ante la institución.</div>
-            <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;">
-              <button class="btn" type="button" data-screen="verify">Verificar un certificado</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- ===================== VERIFICACIÓN PÚBLICA ===================== -->
-        <div class="screen" data-screen-panel="verify" data-screen-label="Verificación pública">
-          <div class="page-head head-row">
-            <div>
-              <h1>Verificación pública</h1>
-              <p>Cualquier persona puede comprobar la autenticidad de un certificado sin iniciar sesión ni conectar una wallet.</p>
-            </div>
-            <span class="ro-pill">Acceso público · sin sesión</span>
-          </div>
-
-          <div class="card pad" style="margin-bottom:22px;">
-            <h2 style="font-size:16px;font-weight:600;margin:0 0 4px;">Buscar el certificado</h2>
-            <p style="color:var(--muted);font-size:13px;margin:0 0 18px;">Escanea el QR del certificado o introduce su Token ID o el CID de IPFS. La validez se consulta directamente en el contrato.</p>
-            <div class="vfsearch">
-              <input class="input mono" id="vf-input" type="text" placeholder="Token ID (ej. 12) · CID (Qm… / bafy…) · URL del QR" />
-              <button class="btn btn--primary btn--lg" id="vf-go" type="button">Verificar</button>
-              <button class="btn btn--ghost" id="vf-clear" type="button">Limpiar</button>
+          <div class="resultado resultado--valido" id="ver-valido" hidden>
+            <div class="resultado-cabecera"><span class="resultado-marca">✓</span><span><b>Certificado válido</b><small id="ver-nota"></small></span></div>
+            <dl class="pares resultado-cuerpo">
+              <dt>Titular</dt><dd id="ver-alumno">—</dd>
+              <dt>Institución emisora</dt><dd id="ver-institucion">—</dd>
+              <dt>Fecha de emisión</dt><dd id="ver-fecha">—</dd>
+              <dt>Token ID</dt><dd class="mono" id="ver-token">—</dd>
+              <dt>Red</dt><dd id="ver-red-nombre">—</dd>
+              <dt>Wallet propietaria</dt><dd class="mono quebrar" id="ver-propietario">—</dd>
+              <dt>CID de metadata</dt><dd class="mono quebrar" id="ver-cid">—</dd>
+              <dt>CID del PDF base</dt><dd class="mono quebrar" id="ver-pdf-cid">—</dd>
+              <dt>Contrato</dt><dd class="mono quebrar" id="ver-contrato">—</dd>
+            </dl>
+            <div class="resultado-pie">
+              <a class="boton" id="ver-pdf" target="_blank" rel="noopener" hidden>↓ PDF del certificado</a>
+              <a class="boton boton--primario" id="ver-explorador" target="_blank" rel="noopener" hidden>Ver transacción</a>
             </div>
           </div>
 
-          <div class="vr-idle" id="vf-idle">
-            <div class="ei"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></div>
-            <b>Sin resultados todavía</b>
-            <span>El resultado de la verificación aparecerá aquí.</span>
-          </div>
-
-          <!-- RESULTADO VÁLIDO -->
-          <div class="vfresult valid" id="vf-ok" hidden>
-            <div class="vr-head">
-              <span class="vr-mark">✓</span>
-              <span>
-                <b>Certificado válido</b>
-                <span class="vr-sub" id="vf-note">El token existe en el contrato y su tokenURI coincide con el registrado.</span>
-              </span>
-            </div>
-            <div class="vr-body">
-              <dl class="kvs" style="grid-template-columns:220px 1fr;">
-                <dt>Titular</dt><dd id="vf-student">—</dd>
-                <dt>Curso o programa</dt><dd id="vf-course">—</dd>
-                <dt>Institución emisora</dt><dd id="vf-inst">—</dd>
-                <dt>Fecha de emisión</dt><dd id="vf-date">—</dd>
-                <dt>Token ID</dt><dd class="mono" id="vf-token">—</dd>
-                <dt>Wallet propietaria</dt><dd class="mono" style="font-size:12.5px;word-break:break-all;" id="vf-owner">—</dd>
-                <dt>CID de metadata (tokenURI)</dt><dd class="mono" style="font-size:12.5px;word-break:break-all;" id="vf-cid">—</dd>
-                <dt>Contrato en blockchain</dt><dd class="mono" style="font-size:12.5px;word-break:break-all;" id="vf-contract">—</dd>
-                <dt>Red</dt><dd id="vf-net">—</dd>
-              </dl>
-            </div>
-            <div class="vr-foot">
-              <a class="btn" id="vf-pdf" target="_blank" rel="noopener" hidden>↓ PDF del certificado</a>
-              <a class="btn btn--primary" id="vf-explorer" target="_blank" rel="noopener" hidden>Explorar transacción <span class="mono" id="vf-tx">—</span></a>
-            </div>
-          </div>
-
-          <!-- RESULTADO INVÁLIDO / REVOCADO -->
-          <div class="vfresult invalid" id="vf-bad" hidden>
-            <div class="vr-head">
-              <span class="vr-mark">!</span>
-              <span>
-                <b id="vf-badtitle">Certificado no válido</b>
-                <span class="vr-sub" id="vf-badmsg">El documento no coincide con ningún registro de la red.</span>
-              </span>
-            </div>
-            <div class="vr-body">
-              <p style="margin:0 0 14px;color:var(--ink-2);font-size:13.5px;">Posibles causas: el Token ID o CID se transcribió mal, el token no existe en el contrato, o su tokenURI on-chain no coincide con el registrado por la institución.</p>
-              <div class="banner err">
-                <span class="bi">⚠</span>
-                <div>No aceptes este documento como comprobante. Si crees que hay un error, contacta a la institución emisora con el identificador consultado.</div>
-              </div>
-            </div>
-            <div class="vr-foot">
-              <button class="btn" id="vf-clear2" type="button">Intentar con otro identificador</button>
+          <div class="resultado resultado--invalido" id="ver-invalido" hidden>
+            <div class="resultado-cabecera"><span class="resultado-marca">!</span><span><b>Certificado no válido</b><small id="ver-error"></small></span></div>
+            <div class="resultado-cuerpo">
+              <div class="banda banda--error">No aceptes este documento como comprobante. Si crees que hay un error, contacta a la institución emisora con el identificador consultado.</div>
             </div>
           </div>
         </div>
@@ -1027,8 +627,8 @@
   </div>
 </section>
 
-<div class="toast" id="toast"><span class="tk">✓</span><span id="toast-msg"></span></div>
+<div class="aviso-flotante" id="aviso-flotante" role="status"></div>
 
-<script src="app.js"></script>
+<script type="module" src="/Scripts/Principal.js"></script>
 </body>
 </html>

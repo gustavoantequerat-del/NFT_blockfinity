@@ -1,0 +1,32 @@
+/* =============================================================
+   Asistente de emisión y pantalla de progreso.
+   ============================================================= */
+.asistente { display: grid; grid-template-columns: 210px 1fr; gap: 30px; align-items: start; }
+.asistente-cuerpo { min-width: 0; }
+
+.pasos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 90px; }
+.pasos li { position: relative; display: flex; align-items: center; gap: 12px; padding: 9px 4px; font-weight: 600; color: var(--tinta-2); }
+.pasos li b {
+  z-index: 1; width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%;
+  background: var(--superficie); border: 1.5px solid var(--linea-fuerte); color: var(--apagado); font-size: 12.5px;
+}
+.pasos li::before { content: ""; position: absolute; left: 17.5px; top: 37px; bottom: -9px; width: 1.5px; background: var(--linea-fuerte); }
+.pasos li:last-child::before { display: none; }
+.pasos li.actual b { border-color: var(--acento); color: var(--acento); box-shadow: 0 0 0 4px var(--acento-suave); }
+.pasos li.hecho b { background: var(--acento); border-color: var(--acento); color: #fff; }
+.pasos li.hecho::before { background: var(--acento); }
+
+.pie-asistente { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linea); }
+
+.aviso-bloqueo {
+  display: inline-flex; padding: 7px 13px; border-radius: 999px; font-size: 12.5px; font-weight: 500;
+  color: var(--aviso); background: var(--aviso-suave);
+}
+
+@media (max-width: 880px) {
+  .asistente { grid-template-columns: 1fr; }
+  .pasos { position: static; flex-direction: row; overflow-x: auto; }
+  .pasos li::before { display: none; }
+  .pasos li span { display: none; }
+  .pasos li.actual span { display: inline; }
+}

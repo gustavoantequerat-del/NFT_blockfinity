@@ -2,10 +2,10 @@
   "name": "certificados-nft-backend",
   "version": "1.0.0",
   "description": "Backend para plataforma de emisión de certificados NFT",
-  "main": "server.js",
+  "main": "Servidor.js",
   "scripts": {
-    "start": "node --experimental-sqlite server.js",
-    "seed": "node --experimental-sqlite seed.js"
+    "start": "node --experimental-sqlite Servidor.js",
+    "seed": "node --experimental-sqlite Semilla.js"
   },
   "dependencies": {
     "axios": "^1.7.0",
