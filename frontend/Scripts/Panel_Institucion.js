@@ -17,6 +17,7 @@ Registrar_Pantalla('tablero', {
     const Institucion = Institucion_Actual();
     const { lotes: Lotes } = await Llamar_Api('/api/panel/lotes');
     Poner_Texto('tab-nombre', Institucion?.nombre || 'Dashboard');
+    Por_Id('tab-ruta').value = Institucion ? `${window.location.origin}${Institucion.ruta_registro}` : '';
     Poner_Texto('tab-credito', Dinero(Institucion?.credito_usd));
     Poner_Texto('tab-certificados', Institucion ? `${Institucion.entregados} / ${Institucion.certificados}` : 0);
     Poner_Texto('tab-pendientes', Lotes.filter((L) => L.estado === 'pendiente').length);
@@ -67,6 +68,7 @@ async function Agregar_Estudiante(Formulario) {
 }
 
 async function Quitar_Estudiante(Nodo) {
+  if (!confirm('¿Quitar a este estudiante? Si se registró con cuenta, también pierde el acceso.')) return;
   await Llamar_Api(`/api/panel/estudiantes/${Nodo.dataset.id}`, { metodo: 'DELETE' });
   await Cargar_Estudiantes();
 }
@@ -81,5 +83,9 @@ async function Solicitar_Lote(Formulario) {
   Mostrar_Pantalla('tablero');
 }
 
-export const Acciones = { Quitar_Estudiante };
+function Copiar_Ruta_Registro() {
+  navigator.clipboard?.writeText(Por_Id('tab-ruta').value).then(() => Mostrar_Aviso('Enlace copiado.'));
+}
+
+export const Acciones = { Quitar_Estudiante, Copiar_Ruta_Registro };
 export const Formularios = { Agregar_Estudiante, Solicitar_Lote };

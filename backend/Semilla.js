@@ -13,6 +13,8 @@ const Wallet_Estudiante = process.env.DEMO_STUDENT_WALLET?.trim() || '0x70997970
 const Institucion_Demo = {
   nombre: 'Universidad Demo',
   etiqueta: 'UDEMO',
+  slug: 'universidad_demo',
+  color: '#0f6e6e',
   responsable_nombre: 'Andrea Villalobos',
   responsable_correo: 'consulta@universidad.edu',
   wallet: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
@@ -27,17 +29,19 @@ const Usuarios_Demo = [
 
 async function Ejecutar_Semilla() {
   Base_Datos.prepare(`
-    INSERT INTO instituciones (nombre, etiqueta, responsable_nombre, responsable_correo, wallet, credito_usd)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO instituciones (nombre, etiqueta, slug, color, responsable_nombre, responsable_correo, wallet, credito_usd)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(etiqueta) DO UPDATE SET
       nombre = excluded.nombre,
+      slug = excluded.slug,
+      color = COALESCE(instituciones.color, excluded.color),
       responsable_nombre = excluded.responsable_nombre,
       responsable_correo = excluded.responsable_correo,
       wallet = COALESCE(instituciones.wallet, excluded.wallet)
-  `).run(Institucion_Demo.nombre, Institucion_Demo.etiqueta, Institucion_Demo.responsable_nombre,
+  `).run(Institucion_Demo.nombre, Institucion_Demo.etiqueta, Institucion_Demo.slug, Institucion_Demo.color, Institucion_Demo.responsable_nombre,
     Institucion_Demo.responsable_correo, Institucion_Demo.wallet, Institucion_Demo.credito_usd);
   const Institucion_Id = Base_Datos.prepare('SELECT id FROM instituciones WHERE etiqueta = ?').get(Institucion_Demo.etiqueta).id;
-  console.log(`✓ Institución ${Institucion_Demo.etiqueta} - ${Institucion_Demo.nombre} (id ${Institucion_Id})`);
+  console.log(`✓ Institución ${Institucion_Demo.nombre} (id ${Institucion_Id}) · registro en /registro_${Institucion_Demo.slug}`);
 
   for (const Usuario of Usuarios_Demo) {
     Base_Datos.prepare(`
@@ -57,10 +61,13 @@ async function Ejecutar_Semilla() {
 
   // El estudiante también figura en la lista de la institución, listo para un lote.
   const Estudiante = Usuarios_Demo.find((Usuario) => Usuario.rol === 'student');
+  const Usuario_Id = Base_Datos.prepare('SELECT id FROM usuarios WHERE correo = ?').get(Estudiante.correo).id;
   const Existe = Base_Datos.prepare('SELECT id FROM estudiantes_institucionales WHERE institucion_id = ? AND correo = ?').get(Institucion_Id, Estudiante.correo);
-  if (!Existe) {
-    Base_Datos.prepare('INSERT INTO estudiantes_institucionales (institucion_id, nombre, correo, wallet) VALUES (?, ?, ?, ?)')
-      .run(Institucion_Id, Estudiante.nombre, Estudiante.correo, Estudiante.wallet);
+  if (Existe) {
+    Base_Datos.prepare('UPDATE estudiantes_institucionales SET usuario_id = ? WHERE id = ?').run(Usuario_Id, Existe.id);
+  } else {
+    Base_Datos.prepare('INSERT INTO estudiantes_institucionales (institucion_id, nombre, correo, wallet, usuario_id) VALUES (?, ?, ?, ?, ?)')
+      .run(Institucion_Id, Estudiante.nombre, Estudiante.correo, Estudiante.wallet, Usuario_Id);
   }
   console.log('\nSemilla completada.');
 }

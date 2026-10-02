@@ -1,5 +1,5 @@
-// Rutas del administrador: asistente de emisión, historial y registros de
-// wallet (tabla participantes). Todas exigen sesión de admin (ver Servidor.js).
+// Rutas del administrador: asistente de emisión e historial.
+// Todas exigen sesión de admin (ver Servidor.js).
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
@@ -13,8 +13,6 @@ const Emision = require('./Emision_Certificados');
 
 const Rutas = express.Router();
 const Subida = multer({ dest: Emision.Carpeta_Subidas });
-
-const Eventos_Validos = ['foro', 'asoban'];
 
 function Borrar_Archivos(...Archivos) {
   for (const Archivo of Archivos) if (Archivo?.path && fs.existsSync(Archivo.path)) fs.unlinkSync(Archivo.path);
@@ -257,50 +255,6 @@ Rutas.get('/historial', (Peticion, Respuesta) => {
     },
     emisiones: Emisiones,
   });
-});
-
-// ---------- Registros de wallet (página pública /registro) ----------
-
-Rutas.get('/participantes', (Peticion, Respuesta) => {
-  const Participantes = Base_Datos.prepare('SELECT * FROM participantes ORDER BY creado_en DESC, id DESC').all();
-  Respuesta.json({ exito: true, participantes: Participantes });
-});
-
-// Descarga un Excel nombre/wallet listo para el asistente. ?ids=1,2,3
-// exporta solo esos; ?evento=foro|asoban filtra por módulo.
-Rutas.get('/participantes/exportar', (Peticion, Respuesta) => {
-  const Ids = String(Peticion.query.ids || '').split(',').map(Number).filter(Number.isInteger).filter(Boolean);
-  const Evento = Eventos_Validos.includes(Peticion.query.evento) ? Peticion.query.evento : null;
-  const Filtro_Ids = Ids.length ? `AND id IN (${Ids.map(() => '?').join(',')})` : '';
-  const Participantes = Base_Datos.prepare(`
-    SELECT nombre, wallet FROM participantes
-    WHERE (? IS NULL OR evento = ?) ${Filtro_Ids}
-    ORDER BY creado_en ASC, id ASC
-  `).all(Evento, Evento, ...Ids);
-
-  const Hoja = xlsx.utils.json_to_sheet(Participantes.length ? Participantes : [{ nombre: '', wallet: '' }]);
-  Hoja['!cols'] = [{ wch: 32 }, { wch: 46 }];
-  const Libro = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(Libro, Hoja, 'Participantes');
-  Respuesta.setHeader('Content-Disposition', 'attachment; filename="Participantes.xlsx"');
-  Respuesta.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  Respuesta.send(xlsx.write(Libro, { type: 'buffer', bookType: 'xlsx' }));
-});
-
-Rutas.post('/participantes', (Peticion, Respuesta) => {
-  const Fila = Validar_Fila({ fila: 1, nombre: Peticion.body?.nombre, wallet: Peticion.body?.wallet });
-  if (!Fila.valido) return Respuesta.status(400).json({ exito: false, mensaje: Fila.error });
-  const Evento = Eventos_Validos.includes(Peticion.body?.evento) ? Peticion.body.evento : 'foro';
-  const Resultado = Base_Datos.prepare('INSERT INTO participantes (nombre, wallet, tipo, evento) VALUES (?, ?, ?, ?)')
-    .run(Fila.nombre, Fila.wallet, 'manual', Evento);
-  const Participante = Base_Datos.prepare('SELECT * FROM participantes WHERE id = ?').get(Resultado.lastInsertRowid);
-  Respuesta.status(201).json({ exito: true, participante: Participante });
-});
-
-Rutas.delete('/participantes/:id', (Peticion, Respuesta) => {
-  const Resultado = Base_Datos.prepare('DELETE FROM participantes WHERE id = ?').run(Number(Peticion.params.id));
-  if (!Resultado.changes) return Respuesta.status(404).json({ exito: false, mensaje: 'Participante no encontrado.' });
-  Respuesta.json({ exito: true });
 });
 
 module.exports = Rutas;

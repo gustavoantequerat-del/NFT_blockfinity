@@ -58,7 +58,7 @@ function Pintar_Filas() {
 function Pintar_Confirmacion() {
   const Institucion = Institucion_Actual();
   const Red = Estado.Red;
-  Poner_Texto('conf-institucion', Institucion ? `${Institucion.nombre} · ${Institucion.etiqueta}` : '—');
+  Poner_Texto('conf-institucion', Institucion ? Institucion.nombre : '—');
   Poner_Texto('conf-cantidad', Asistente.Preparados.length);
   Poner_Texto('conf-red', `${(Red.modo || '').toUpperCase()} · ${Red.nombre_red || ''}`);
   Poner_Texto('conf-wallet', Red.wallet_emisora);
@@ -207,7 +207,7 @@ Registrar_Pantalla('emisiones', {
     Por_Id('tabla-emisiones').innerHTML = Emisiones.map((E) => `
       <tr class="${E.estado === 'error_minteo' ? 'fila-error' : ''}">
         <td class="mono">${Formatear_Fecha(E.creado_en)}</td><td><b>${Escapar(E.nombre_alumno)}</b></td>
-        <td>${Escapar(E.institucion_etiqueta || '—')}</td><td class="mono">${Escapar(Acortar(E.wallet_alumno))}</td>
+        <td>${Escapar(E.institucion_nombre || '—')}</td><td class="mono">${Escapar(Acortar(E.wallet_alumno))}</td>
         <td class="mono">${E.token_id != null ? `#${E.token_id}` : '—'}</td><td>${Etiqueta_Estado(E.estado)}</td><td>${Enlaces_Emision(E)}</td>
       </tr>`).join('') || Fila_Vacia(7, 'Todavía no hay emisiones en este modo de red.');
   },

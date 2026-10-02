@@ -9,7 +9,7 @@
 }
 .certificado-sello {
   height: 104px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
-  border-bottom: 1px solid var(--linea); color: var(--acento); font-size: 12px; font-weight: 600;
+  border-bottom: 1px solid var(--linea); color: var(--acento-texto); font-size: 12px; font-weight: 600;
   background: repeating-linear-gradient(135deg, transparent 0 11px, color-mix(in oklab, var(--acento) 7%, transparent) 11px 22px), var(--acento-suave);
 }
 .certificado-anillo {
