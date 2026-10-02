@@ -1,31 +1,63 @@
-// Rutas públicas (sin sesión): instituciones para el registro de cuentas,
-// registro de wallet de participantes y verificación de certificados.
+// Rutas públicas (sin sesión): marca y registro de estudiantes de cada
+// institución (/registro_<slug>) y verificación de certificados.
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const Base_Datos = require('./Base_Datos');
 const Blockchain = require('./Blockchain');
 const Configuracion_Red = require('./Configuracion_Red');
 const Ipfs = require('./Ipfs');
+const { Datos_Marca } = require('./Marca_Institucion');
 
 const Rutas = express.Router();
-const Eventos_Validos = ['foro', 'asoban'];
 
-Rutas.get('/instituciones', (_Peticion, Respuesta) => {
-  const Instituciones = Base_Datos.prepare('SELECT id, nombre, etiqueta FROM instituciones ORDER BY nombre').all();
-  Respuesta.json({ exito: true, instituciones: Instituciones });
+function Buscar_Institucion(Slug) {
+  return Base_Datos.prepare('SELECT * FROM instituciones WHERE slug = ?').get(String(Slug || '').toLowerCase());
+}
+
+// Correo al que las instituciones escriben para que las demos de alta.
+Rutas.get('/configuracion', (_Peticion, Respuesta) => {
+  Respuesta.json({ exito: true, correo_contacto: process.env.CORREO_CONTACTO?.trim() || null });
 });
 
-// Registro de wallet desde /registro o /registroASOBAN: nombre + wallet.
-Rutas.post('/registro-wallet', (Peticion, Respuesta) => {
+Rutas.get('/institucion/:slug', (Peticion, Respuesta) => {
+  const Institucion = Buscar_Institucion(Peticion.params.slug);
+  if (!Institucion) return Respuesta.status(404).json({ exito: false, mensaje: 'Esta institución no existe o fue eliminada.' });
+  Respuesta.json({ exito: true, institucion: Datos_Marca(Institucion) });
+});
+
+// Registro de un estudiante en su institución: crea su cuenta (entra por
+// /login) y lo agrega a la lista de estudiantes de la institución.
+Rutas.post('/registro/:slug', async (Peticion, Respuesta) => {
+  const Institucion = Buscar_Institucion(Peticion.params.slug);
+  if (!Institucion) return Respuesta.status(404).json({ exito: false, mensaje: 'Esta institución no existe o fue eliminada.' });
+
   const Nombre = String(Peticion.body?.nombre || '').trim();
+  const Correo = String(Peticion.body?.correo || '').trim().toLowerCase();
+  const Contrasena = String(Peticion.body?.contrasena || '');
   const Wallet = String(Peticion.body?.wallet || '').trim();
-  const Tipo = Peticion.body?.tipo === 'creada' ? 'creada' : 'existente';
-  const Evento = Eventos_Validos.includes(Peticion.body?.evento) ? Peticion.body.evento : 'foro';
 
-  if (!Nombre) return Respuesta.status(400).json({ exito: false, mensaje: 'Falta el nombre completo.' });
-  if (!Blockchain.Es_Wallet_Valida(Wallet)) return Respuesta.status(400).json({ exito: false, mensaje: 'La wallet no tiene un formato válido.' });
+  if (!Nombre || !Correo || !Contrasena) return Respuesta.status(400).json({ exito: false, mensaje: 'Nombre, correo y contraseña son requeridos.' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(Correo)) return Respuesta.status(400).json({ exito: false, mensaje: 'El correo no tiene un formato válido.' });
+  if (Contrasena.length < 8) return Respuesta.status(400).json({ exito: false, mensaje: 'La contraseña debe tener al menos 8 caracteres.' });
+  if (Wallet && !Blockchain.Es_Wallet_Valida(Wallet)) return Respuesta.status(400).json({ exito: false, mensaje: 'La wallet no tiene un formato válido (0x + 40 caracteres).' });
+  if (Base_Datos.prepare('SELECT id FROM usuarios WHERE correo = ?').get(Correo)) {
+    return Respuesta.status(409).json({ exito: false, mensaje: 'Ya existe una cuenta con ese correo. Inicia sesión en /login.' });
+  }
 
-  Base_Datos.prepare('INSERT INTO participantes (nombre, wallet, tipo, evento) VALUES (?, ?, ?, ?)').run(Nombre, Wallet, Tipo, Evento);
-  Respuesta.status(201).json({ exito: true, mensaje: 'Registro guardado correctamente.' });
+  const Hash = await bcrypt.hash(Contrasena, 12);
+  Base_Datos.exec('BEGIN');
+  try {
+    const Usuario = Base_Datos.prepare(
+      "INSERT INTO usuarios (correo, contrasena_hash, nombre, rol, institucion_id, estado, wallet) VALUES (?, ?, ?, 'student', ?, 'activo', ?)"
+    ).run(Correo, Hash, Nombre, Institucion.id, Wallet || null);
+    Base_Datos.prepare('INSERT INTO estudiantes_institucionales (institucion_id, nombre, correo, wallet, usuario_id) VALUES (?, ?, ?, ?, ?)')
+      .run(Institucion.id, Nombre, Correo, Wallet || null, Usuario.lastInsertRowid);
+    Base_Datos.exec('COMMIT');
+  } catch (Error_Registro) {
+    Base_Datos.exec('ROLLBACK');
+    return Respuesta.status(500).json({ exito: false, mensaje: Error_Registro.message });
+  }
+  Respuesta.status(201).json({ exito: true, mensaje: `Te registraste en ${Institucion.nombre}. Ya puedes iniciar sesión en /login.` });
 });
 
 const Consulta_Emision = `

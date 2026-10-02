@@ -12,8 +12,8 @@
 }
 .pasos li::before { content: ""; position: absolute; left: 17.5px; top: 37px; bottom: -9px; width: 1.5px; background: var(--linea-fuerte); }
 .pasos li:last-child::before { display: none; }
-.pasos li.actual b { border-color: var(--acento); color: var(--acento); box-shadow: 0 0 0 4px var(--acento-suave); }
-.pasos li.hecho b { background: var(--acento); border-color: var(--acento); color: #fff; }
+.pasos li.actual b { border-color: var(--acento); color: var(--acento-texto); box-shadow: 0 0 0 4px var(--acento-suave); }
+.pasos li.hecho b { background: var(--acento); border-color: var(--acento); color: var(--sobre-acento); }
 .pasos li.hecho::before { background: var(--acento); }
 
 .pie-asistente { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linea); }

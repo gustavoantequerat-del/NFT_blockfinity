@@ -18,6 +18,7 @@
   --acento: #2f56d3;
   --acento-presionado: #2342a8;
   --acento-suave: #eef2fd;
+  --acento-texto: #2f56d3; /* acento legible sobre fondo claro */
   --sobre-acento: #ffffff;
 
   --ok: #1f8a52;
@@ -33,13 +34,8 @@
   --sombra-alta: 0 18px 48px rgba(20, 22, 28, .16);
 }
 
-/* La cuenta de institución usa un acento violeta para distinguirse. */
-body[data-rol="viewer"] {
-  --acento: #6d3bd4;
-  --acento-presionado: #572cb0;
-  --acento-suave: #f1ecfd;
-  --fondo: #f6f4fb;
-}
+/* Los paneles de institución y estudiante reemplazan --acento, --acento-*,
+   --sobre-acento y --fondo con la marca de su institución (ver Marca.js). */
 
 * { box-sizing: border-box; }
 html, body { min-height: 100%; }

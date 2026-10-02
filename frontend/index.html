@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Certificados NFT</title>
+<title>Certificados NFT · Blockfinity</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%226%22 fill=%22%232f56d3%22/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,178 +15,96 @@
 <link rel="stylesheet" href="/Estilos/Asistente.css" />
 <link rel="stylesheet" href="/Estilos/Certificados.css" />
 <link rel="stylesheet" href="/Estilos/Verificacion.css" />
-<link rel="stylesheet" href="/Estilos/Registro_Wallet.css" />
+<link rel="stylesheet" href="/Estilos/Registro_Estudiante.css" />
 </head>
 <body>
 
 <!-- =============================================================
-     VISTA · ACCESO (iniciar sesión / crear cuenta / contraseña)
+     VISTA · ACCESO (/login para estudiantes e instituciones, /admin)
      ============================================================= -->
 <section class="vista" id="vista-acceso">
   <div class="acceso">
     <aside class="acceso-lateral">
-      <div class="marca marca--clara"><span class="marca-logo">NFT</span><span>Certificados NFT<small>Panel de emisión institucional</small></span></div>
+      <img class="acceso-logo" src="/Recursos/Logos/Logo_Blockfinity_Blanco.png" alt="Blockfinity Advisors" />
       <div class="acceso-pitch">
         <h2>Certificados verificables en blockchain</h2>
-        <p>Emite y entrega certificados académicos como NFTs. Cada PDF lleva un QR que se verifica directamente en el contrato.</p>
+        <p>Cada certificado es un NFT en tu wallet, con un PDF que lleva un QR verificable directamente en el contrato.</p>
         <ul>
-          <li>Plantilla PDF + lista de estudiantes en un mismo flujo.</li>
-          <li>QR con token ID y CID estampado antes de enviar el NFT.</li>
-          <li>Modo test sin costo y modo main con costos reales.</li>
+          <li>Estudiantes: consulta y descarga tus certificados.</li>
+          <li>Instituciones: arma tus lotes y síguelos hasta la wallet de cada estudiante.</li>
+          <li>Cualquiera puede verificar un certificado escaneando su QR.</li>
         </ul>
       </div>
-      <div class="acceso-pie">Plataforma white-label · Blockfinity Advisors</div>
+      <div class="acceso-pie">Blockfinity Advisors · Nueva era digital</div>
     </aside>
 
     <main class="acceso-principal">
-      <div class="acceso-tarjeta">
-        <div class="pestanas">
-          <button class="activa" type="button" data-accion="Cambiar_Pestana_Acceso" data-pestana="entrar">Iniciar sesión</button>
-          <button type="button" data-accion="Cambiar_Pestana_Acceso" data-pestana="crear">Crear cuenta</button>
+      <form class="acceso-tarjeta" data-formulario="Iniciar_Sesion">
+        <img class="acceso-logo-movil" src="/Recursos/Logos/Logo_Blockfinity_Gris.png" alt="Blockfinity Advisors" />
+        <h1 id="acceso-titulo">Iniciar sesión</h1>
+        <p class="sub" id="acceso-subtitulo">Estudiantes e instituciones: entra con la cuenta de tu institución.</p>
+        <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" placeholder="nombre@institucion.edu" required /></label>
+        <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" autocomplete="current-password" placeholder="Tu contraseña" required /></label>
+        <button class="boton boton--primario boton--bloque boton--grande" type="submit">Iniciar sesión</button>
+        <div class="acceso-enlaces">
+          <a class="enlace enlace--suave" href="/verificar">Verificar un certificado sin iniciar sesión →</a>
+          <p class="ayuda" data-solo-portal="usuario">¿Eres estudiante y no tienes cuenta? Regístrate con el enlace que te compartió tu institución.</p>
+          <p class="ayuda" data-solo-portal="usuario" id="acceso-contacto" hidden></p>
         </div>
-
-        <form data-panel-acceso="entrar" data-formulario="Iniciar_Sesion">
-          <h1>Acceso al panel</h1>
-          <p class="sub">Cada cuenta entra directo a su vista según su rol.</p>
-          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="username" placeholder="nombre@universidad.edu" required /></label>
-          <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" autocomplete="current-password" placeholder="Tu contraseña" required /></label>
-          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Iniciar sesión</button>
-          <div class="acceso-enlaces">
-            <a class="enlace" data-accion="Cambiar_Pestana_Acceso" data-pestana="olvide">¿Olvidaste tu contraseña?</a>
-            <a class="enlace enlace--suave" data-accion="Ir_A_Verificacion">Verificar un certificado sin iniciar sesión →</a>
-            <a class="enlace enlace--suave" href="/registro">Registrar mi wallet para recibir un certificado →</a>
-          </div>
-        </form>
-
-        <form data-panel-acceso="crear" data-formulario="Crear_Cuenta" hidden>
-          <h1>Crear cuenta</h1>
-          <p class="sub">Estudiantes: indica tu wallet para ver tus certificados. Instituciones: elige tu institución y el administrador aprobará el acceso.</p>
-          <label class="campo"><span>Tipo de cuenta</span>
-            <select class="entrada" name="tipo" data-accion-cambio="Cambiar_Tipo_Cuenta">
-              <option value="estudiante">Estudiante</option>
-              <option value="institucion">Institución (consulta)</option>
-            </select>
-          </label>
-          <label class="campo"><span>Nombre completo</span><input class="entrada" name="nombre" type="text" placeholder="Andrea Villalobos" required /></label>
-          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" placeholder="nombre@universidad.edu" required /></label>
-          <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" minlength="8" placeholder="Mínimo 8 caracteres" required /></label>
-          <label class="campo" data-solo-tipo="estudiante"><span>Wallet (opcional)</span><input class="entrada mono" name="wallet" type="text" placeholder="0x…" /></label>
-          <label class="campo" data-solo-tipo="institucion" hidden><span>Institución</span><select class="entrada" name="institucion_id" data-lista-instituciones></select></label>
-          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Crear cuenta</button>
-        </form>
-
-        <form data-panel-acceso="olvide" data-formulario="Pedir_Recuperacion" hidden>
-          <h1>Recuperar contraseña</h1>
-          <p class="sub">Te generamos un enlace de un solo uso (válido 1 hora). Lo verás en la consola del servidor.</p>
-          <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" required /></label>
-          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Generar enlace</button>
-          <div class="acceso-enlaces"><a class="enlace" data-accion="Cambiar_Pestana_Acceso" data-pestana="entrar">← Volver a iniciar sesión</a></div>
-        </form>
-
-        <form data-panel-acceso="restablecer" data-formulario="Restablecer_Contrasena" hidden>
-          <h1>Nueva contraseña</h1>
-          <p class="sub">Escribe tu nueva contraseña.</p>
-          <label class="campo"><span>Contraseña nueva</span><input class="entrada" name="contrasena" type="password" minlength="8" required /></label>
-          <button class="boton boton--primario boton--bloque boton--grande" type="submit">Guardar contraseña</button>
-        </form>
-      </div>
+      </form>
     </main>
   </div>
 </section>
 
 <!-- =============================================================
-     VISTA · REGISTRO DE WALLET (/registro y /registroASOBAN)
+     VISTA · REGISTRO DE ESTUDIANTES (/registro_<institución>)
      ============================================================= -->
-<section class="vista registro-wallet" id="vista-registro">
-  <header class="rw-barra">
-    <div class="rw-marca" data-rw-solo="foro">
-      <img src="/Recursos/Logos/Logo_Cablock_Blanco.png" alt="Cámara Boliviana de Blockchain (CABLOCK)" class="rw-logo" />
-      <span class="rw-separador"></span>
-      <img src="/Recursos/Logos/Logo_Foro_Blanco.png" alt="Foro Activos Digitales Bolivia 2026" class="rw-logo" />
-    </div>
-    <div class="rw-marca" data-rw-solo="asoban" hidden>
-      <img src="/Recursos/Logos/Logo_Asoban_Blanco.png" alt="" class="rw-logo rw-logo--asoban" />
-      <span class="rw-marca-texto"><b>ASOBAN</b><small>Asociación de Bancos Privados de Bolivia</small></span>
-      <span class="rw-separador"></span>
-      <img src="/Recursos/Logos/Logo_Blockfinity_Blanco.png" alt="Blockfinity Advisors" class="rw-logo rw-logo--blockfinity" />
-    </div>
+<section class="vista registro" id="vista-registro">
+  <header class="registro-barra" id="registro-barra">
+    <img class="registro-logo" id="registro-logo-blockfinity" src="/Recursos/Logos/Logo_Blockfinity_Blanco.png" alt="Blockfinity Advisors" />
+    <span class="registro-separador"></span>
+    <img class="registro-logo" id="registro-logo-institucion" alt="" hidden />
+    <b class="registro-nombre-institucion" id="registro-nombre-barra"></b>
   </header>
 
-  <main class="rw-contenido" id="rw-contenido">
-    <!-- Paso: elegir camino -->
-    <div class="rw-paso rw-aparecer" data-rw-paso="inicio">
-      <p class="rw-antetitulo" id="rw-antetitulo">Certificados NFT</p>
-      <img src="/Recursos/Logos/Logo_Foro_Color.png" alt="Foro Activos Digitales Bolivia 2026" class="rw-sello" data-rw-solo="foro" />
-      <img src="/Recursos/Logos/Logo_Asoban_Color.png" alt="ASOBAN" class="rw-sello rw-sello--asoban" data-rw-solo="asoban" hidden />
-      <h1 class="rw-titulo">Recibe tu certificado Web3</h1>
-      <p class="rw-subtitulo">Tu certificado será un documento digital (NFT) que vive en la blockchain, a tu nombre. Solo necesitas una wallet donde recibirlo.</p>
-      <p class="rw-pregunta">¿Ya tienes una wallet?</p>
-      <div class="rw-opciones">
-        <button class="rw-opcion" type="button" data-accion="Elegir_Camino_Wallet" data-camino="tengo">
-          <span class="rw-icono rw-icono--azul">◧</span>
-          <b>Sí, ya tengo una</b>
-          <span>Ingresa la dirección donde quieres recibir tu certificado.</span>
-        </button>
-        <button class="rw-opcion" type="button" data-accion="Elegir_Camino_Wallet" data-camino="crear">
-          <span class="rw-icono">✦</span>
-          <b>No, créala por mí</b>
-          <span>Te ayudamos a crearla con MetaMask en un par de minutos.</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Paso: ya tengo wallet -->
-    <form class="rw-panel rw-paso rw-aparecer" data-rw-paso="tengo" data-formulario="Registrar_Wallet_Existente" hidden>
-      <button class="rw-volver" type="button" data-accion="Reiniciar_Registro_Wallet">← Volver</button>
-      <h2>Ingresa tus datos</h2>
-      <p class="rw-guia">Con esto recibirás tu certificado Web3.</p>
-      <label class="rw-campo"><span>Nombre completo</span><input class="rw-entrada" name="nombre" autocomplete="off" placeholder="Escríbelo tal como quieres que aparezca en tu certificado" /></label>
-      <button class="rw-boton rw-boton--borde" type="button" data-accion="Detectar_Wallet">Detectar mi wallet automáticamente</button>
-      <label class="rw-campo"><span>Dirección de tu wallet</span><input class="rw-entrada mono" name="wallet" autocomplete="off" placeholder="0x..." /></label>
-      <p class="rw-ayuda" data-rw-mensaje>Es la dirección pública que empieza con 0x (no una frase secreta ni una clave privada).</p>
-      <button class="rw-boton" type="submit">Registrar mi dirección</button>
+  <main class="registro-contenido">
+    <form class="registro-panel registro-aparecer" data-paso-registro="formulario" data-formulario="Registrar_Estudiante">
+      <p class="registro-antetitulo">Registro de estudiantes</p>
+      <h1 class="registro-titulo" id="registro-titulo">Crea tu cuenta</h1>
+      <p class="registro-guia">Con esta cuenta verás los certificados NFT que tu institución emita a tu wallet.</p>
+      <label class="campo"><span>Nombre completo</span><input class="entrada" name="nombre" autocomplete="name" placeholder="Tal como quieres que aparezca en tu certificado" required /></label>
+      <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="email" required /></label>
+      <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required /></label>
+      <label class="campo"><span>Wallet donde recibirás el certificado</span>
+        <span class="registro-wallet">
+          <input class="entrada mono" name="wallet" autocomplete="off" placeholder="0x…" />
+          <button class="boton" type="button" data-accion="Conectar_Metamask">Usar MetaMask</button>
+        </span>
+      </label>
+      <p class="ayuda registro-ayuda" id="registro-ayuda-wallet">Es la dirección pública que empieza con 0x (nunca tu frase secreta). Si no tienes wallet, “Usar MetaMask” te ayuda a crearla; también puedes agregarla después desde tu cuenta.</p>
+      <details class="registro-tutorial">
+        <summary>¿No sabes cómo crear tu wallet? Ver tutorial</summary>
+        <div class="registro-video"><iframe data-src="https://drive.google.com/file/d/1fSbIMM9m6RrctzjhcVGvPYvA14zepffK/preview" title="Tutorial: cómo crear tu wallet en MetaMask" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+      </details>
+      <button class="boton boton--primario boton--bloque boton--grande" type="submit">Registrarme</button>
+      <p class="ayuda registro-centro">¿Ya tienes cuenta? <a class="enlace" href="/login">Inicia sesión</a></p>
     </form>
 
-    <!-- Paso: crear wallet con MetaMask -->
-    <div class="rw-dos-columnas rw-paso rw-aparecer" data-rw-paso="crear" hidden>
-      <form class="rw-panel" data-formulario="Crear_Wallet_Metamask">
-        <button class="rw-volver" type="button" data-accion="Reiniciar_Registro_Wallet">← Volver</button>
-        <h2>Crea tu wallet</h2>
-        <p class="rw-guia">Te pediremos crear o conectar una cuenta en MetaMask. Si no tienes la extensión, abriremos su página de descarga y la reconoceremos sola apenas termines de instalarla.</p>
-        <label class="rw-campo"><span>Nombre completo</span><input class="rw-entrada" name="nombre" autocomplete="off" placeholder="Escríbelo tal como quieres que aparezca en tu certificado" /></label>
-        <button class="rw-boton" type="submit" data-rw-boton-crear>Crear mi wallet en MetaMask</button>
-        <button class="rw-volver rw-volver--centro" type="button" data-accion="Cancelar_Espera_Metamask" data-rw-cancelar hidden>Cancelar</button>
-        <p class="rw-error" data-rw-mensaje hidden></p>
-        <div data-rw-manual hidden>
-          <label class="rw-campo"><span>¿Ya la creaste? Pega aquí tu dirección</span><input class="rw-entrada mono" name="wallet" autocomplete="off" placeholder="0x..." /></label>
-          <button class="rw-boton rw-boton--borde" type="button" data-accion="Registrar_Wallet_Manual">Registrar esta dirección</button>
-        </div>
-      </form>
-      <aside class="rw-tutorial">
-        <p class="rw-tutorial-titulo"><span class="rw-insignia">Tutorial</span> ¿No sabes cómo?</p>
-        <div class="rw-video">
-          <iframe src="https://drive.google.com/file/d/1fSbIMM9m6RrctzjhcVGvPYvA14zepffK/preview" title="Tutorial: cómo crear tu wallet en MetaMask" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>
-        </div>
-      </aside>
-    </div>
+    <section class="registro-panel registro-aparecer" data-paso-registro="listo" aria-live="polite" hidden>
+      <div class="registro-ok">✓</div>
+      <h2>Registro completado</h2>
+      <p class="registro-guia" id="registro-mensaje-listo"></p>
+      <a class="boton boton--primario boton--bloque boton--grande" href="/login">Ir a iniciar sesión</a>
+    </section>
 
-    <!-- Paso: listo -->
-    <section class="rw-panel rw-paso rw-aparecer" data-rw-paso="listo" aria-live="polite" hidden>
-      <div class="rw-insignia-ok">✓</div>
-      <h2 id="rw-listo-titulo">Todo listo</h2>
-      <p class="rw-guia" id="rw-listo-texto">Registramos tu dirección. Ahí recibirás tu certificado Web3.</p>
-      <span class="rw-etiqueta">Tu dirección</span>
-      <div class="rw-direccion"><code id="rw-direccion"></code><button class="rw-copiar" type="button" data-accion="Copiar_Wallet_Registrada">Copiar</button></div>
-      <p class="rw-nota">La generación de tu certificado no es inmediata: tu NFT llegará a esta wallet dentro de 2 a 3 días hábiles.</p>
-      <p class="rw-nota" id="rw-nota-frase" hidden>Guarda bien tu frase de recuperación de MetaMask: es la única forma de volver a acceder a esta wallet.</p>
-      <button class="rw-boton rw-boton--borde" type="button" data-accion="Reiniciar_Registro_Wallet">Registrar otra</button>
+    <section class="registro-panel" data-paso-registro="inexistente" hidden>
+      <h2>Esta institución no existe</h2>
+      <p class="registro-guia">Revisa el enlace que te compartieron. Si la institución fue eliminada, contáctala directamente.</p>
+      <a class="boton boton--bloque" href="/login">Ir a iniciar sesión</a>
     </section>
   </main>
 
-  <footer class="rw-pie">
-    <span>Created by <a href="https://www.blockfinityadvisors.com/" target="_blank" rel="noopener noreferrer">Blockfinity Advisors</a></span>
-    <a href="/">Panel de certificados</a>
-  </footer>
+  <footer class="registro-pie">Certificados NFT por <a href="https://www.blockfinityadvisors.com/" target="_blank" rel="noopener noreferrer">Blockfinity Advisors</a></footer>
 </section>
 
 <!-- =============================================================
@@ -195,14 +113,17 @@
 <section class="vista" id="vista-app">
   <div class="armazon">
     <nav class="lateral">
-      <div class="marca"><span class="marca-logo">NFT</span><span>Certificados NFT</span></div>
+      <div class="marca" id="marca-lateral">
+        <img class="marca-imagen" id="marca-lateral-logo" alt="" hidden />
+        <span class="marca-logo" id="marca-lateral-inicial">NFT</span>
+        <span id="marca-lateral-nombre">Certificados NFT</span>
+      </div>
 
       <div class="menu-grupo" data-rol="admin">
         <span class="menu-titulo">Principal</span>
         <button class="menu-item" type="button" data-pantalla-ir="instituciones">Instituciones</button>
         <button class="menu-item" type="button" data-pantalla-ir="emisiones">Emisiones</button>
         <button class="menu-item" type="button" data-pantalla-ir="solicitudes">Solicitudes de lotes <span class="etiqueta etiqueta--aviso" id="menu-lotes-pendientes" hidden></span></button>
-        <button class="menu-item" type="button" data-pantalla-ir="participantes">Registros de wallet</button>
         <button class="menu-item" type="button" data-pantalla-ir="asistente">Nueva emisión</button>
         <span class="menu-titulo">Sistema</span>
         <button class="menu-item" type="button" data-pantalla-ir="configuracion">Configuración</button>
@@ -255,18 +176,25 @@
             <div class="dato"><span>Instituciones</span><b id="inst-total">0</b></div>
             <div class="dato"><span>Certificados (modo activo)</span><b id="inst-certificados">0</b></div>
             <div class="dato"><span>Crédito agregado</span><b id="inst-credito">$0.00</b></div>
-            <div class="dato"><span>Solicitudes de acceso</span><b id="inst-solicitudes">0</b></div>
+            <div class="dato"><span>Estudiantes registrados</span><b id="inst-estudiantes">0</b></div>
           </div>
 
           <form class="tarjeta relleno separado" id="formulario-institucion" data-formulario="Crear_Institucion" hidden>
             <h2>Nueva institución</h2>
+            <p class="ayuda separado">Se crea su ruta de registro de estudiantes y la cuenta de su administrador institucional, que entra por <span class="mono">/login</span>.</p>
             <div class="grilla-2">
-              <label class="campo"><span>Nombre</span><input class="entrada" name="nombre" placeholder="Universidad Nacional · Derecho" required /></label>
-              <label class="campo"><span>Etiqueta</span><input class="entrada mono" name="etiqueta" placeholder="UNI-DER" required /></label>
+              <label class="campo"><span>Nombre de la institución</span><input class="entrada" name="nombre" placeholder="Rosa Gattorno" required data-accion-entrada="Previsualizar_Ruta" /></label>
+              <div class="campo"><span>Ruta de registro</span><div class="ruta-previa mono" id="ruta-previa">/registro_…</div></div>
+              <label class="campo"><span>Color de la marca</span><span class="selector-color"><input type="color" name="color" value="#2f56d3" /><small>Se usa en el header del registro y en los paneles de la institución.</small></span></label>
+              <label class="archivo archivo--compacto">
+                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" data-archivo="logo_nuevo" hidden />
+                <span class="archivo-icono">LOGO</span>
+                <span><b data-archivo-nombre="logo_nuevo">Subir logo</b><small>PNG, JPG o WebP, máx. 1 MB. Mejor con fondo transparente.</small></span>
+              </label>
               <label class="campo"><span>Responsable</span><input class="entrada" name="responsable_nombre" placeholder="Lic. Nombre Apellido" /></label>
-              <label class="campo"><span>Correo del responsable</span><input class="entrada" name="responsable_correo" type="email" placeholder="nombre@institucion.edu" /></label>
-              <label class="campo"><span>Wallet de la institución</span><input class="entrada mono" name="wallet" placeholder="0x…" /></label>
               <label class="campo"><span>Crédito inicial (USD)</span><input class="entrada mono" name="credito_usd" type="number" min="0" step="0.01" value="0" /></label>
+              <label class="campo"><span>Correo del admin institucional</span><input class="entrada" name="correo_admin" type="email" autocomplete="off" required /></label>
+              <label class="campo"><span>Contraseña del admin institucional</span><input class="entrada" name="contrasena_admin" type="text" minlength="8" autocomplete="off" placeholder="Mínimo 8 caracteres" required /></label>
             </div>
             <div class="acciones-derecha">
               <button class="boton boton--fantasma" type="button" data-accion="Ocultar_Formulario_Institucion">Cancelar</button>
@@ -274,17 +202,9 @@
             </div>
           </form>
 
-          <div class="tarjeta separado" id="tarjeta-solicitudes-acceso" hidden>
-            <div class="relleno"><h2>Solicitudes de acceso</h2><p class="ayuda">Cuentas de institución que esperan aprobación.</p></div>
-            <div class="tabla-envoltura"><table class="tabla">
-              <thead><tr><th>Solicitante</th><th>Institución</th><th>Fecha</th><th></th></tr></thead>
-              <tbody id="tabla-solicitudes-acceso"></tbody>
-            </table></div>
-          </div>
-
           <div class="tarjeta tabla-envoltura">
             <table class="tabla">
-              <thead><tr><th>Institución</th><th>Wallet</th><th class="derecha">Crédito</th><th class="derecha">Certificados</th><th>Estado</th><th></th></tr></thead>
+              <thead><tr><th>Institución</th><th>Ruta de registro</th><th class="derecha">Crédito</th><th class="derecha">Estudiantes</th><th class="derecha">Certificados</th><th>Estado</th><th></th></tr></thead>
               <tbody id="tabla-instituciones"></tbody>
             </table>
           </div>
@@ -293,29 +213,48 @@
         <!-- ================= DETALLE DE INSTITUCIÓN (admin) ================= -->
         <div class="pantalla" data-pantalla="institucion">
           <div class="cabecera fila-cabecera">
-            <div>
-              <a class="enlace" data-pantalla-ir="instituciones">← Instituciones</a>
-              <h1 id="det-nombre">—</h1>
-              <p>Etiqueta <span class="mono" id="det-etiqueta">—</span> · responsable <span id="det-responsable">—</span></p>
+            <div class="cabecera-marca">
+              <span class="muestra-logo" id="det-logo"></span>
+              <div>
+                <a class="enlace" data-pantalla-ir="instituciones">← Instituciones</a>
+                <h1 id="det-nombre">—</h1>
+                <p>Registro de estudiantes: <a class="enlace mono" id="det-ruta" target="_blank"></a></p>
+              </div>
             </div>
             <button class="boton boton--primario boton--grande" type="button" data-accion="Emitir_Para_Institucion">＋ Emitir certificados</button>
           </div>
           <div class="grilla-datos">
+            <div class="dato"><span>Estudiantes registrados</span><b id="det-estudiantes">0</b></div>
             <div class="dato"><span>Certificados (modo activo)</span><b id="det-certificados">0</b></div>
             <div class="dato"><span>Entregados</span><b id="det-entregados">0</b></div>
             <div class="dato"><span>Crédito disponible</span><b id="det-credito">$0.00</b></div>
           </div>
-          <div class="tarjeta relleno separado">
-            <h2>Datos y crédito</h2>
-            <dl class="pares">
-              <dt>Wallet registrada</dt><dd class="mono" id="det-wallet">—</dd>
-              <dt>Correo del responsable</dt><dd id="det-correo">—</dd>
-              <dt>Estado</dt><dd id="det-estado">—</dd>
-            </dl>
-            <form class="fila-formulario" data-formulario="Recargar_Credito">
-              <label class="campo"><span>Recargar crédito (USD, negativo para descontar)</span><input class="entrada mono" name="monto" type="number" step="0.01" placeholder="100.00" required /></label>
-              <button class="boton" type="submit">Aplicar</button>
+          <div class="grilla-2">
+            <form class="tarjeta relleno separado" data-formulario="Editar_Institucion">
+              <h2>Marca y cuenta institucional</h2>
+              <label class="campo"><span>Color de la marca</span><span class="selector-color"><input type="color" name="color" id="det-color" /></span></label>
+              <label class="archivo archivo--compacto">
+                <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" data-archivo="logo_editar" hidden />
+                <span class="archivo-icono">LOGO</span>
+                <span><b data-archivo-nombre="logo_editar">Reemplazar logo</b><small>PNG, JPG o WebP, máx. 1 MB.</small></span>
+              </label>
+              <label class="campo"><span>Responsable</span><input class="entrada" name="responsable_nombre" id="det-responsable" /></label>
+              <label class="campo"><span>Correo del admin institucional</span><input class="entrada" name="correo_admin" id="det-correo" type="email" autocomplete="off" /></label>
+              <label class="campo"><span>Nueva contraseña (vacío = no cambiar)</span><input class="entrada" name="contrasena_admin" type="text" minlength="8" autocomplete="off" /></label>
+              <div class="acciones-derecha"><button class="boton boton--primario" type="submit">Guardar cambios</button></div>
             </form>
+            <div>
+              <form class="tarjeta relleno separado" data-formulario="Recargar_Credito">
+                <h2>Crédito</h2>
+                <label class="campo"><span>Recargar (USD, negativo para descontar)</span><input class="entrada mono" name="monto" type="number" step="0.01" placeholder="100.00" required /></label>
+                <div class="acciones-derecha"><button class="boton" type="submit">Aplicar</button></div>
+              </form>
+              <div class="tarjeta relleno separado zona-peligro">
+                <h2>Eliminar institución</h2>
+                <p class="ayuda separado">Borra la institución, su ruta de registro, su lista de estudiantes, sus lotes y todas sus cuentas (admin institucional y estudiantes). Los NFT ya emitidos siguen en blockchain.</p>
+                <button class="boton boton--peligro" type="button" data-accion="Eliminar_Institucion">Eliminar institución</button>
+              </div>
+            </div>
           </div>
           <div class="tarjeta">
             <div class="relleno"><h2>Certificados de esta institución</h2></div>
@@ -356,32 +295,6 @@
             </table>
           </div>
           <p class="ayuda">“Emitir” abre el asistente con la plantilla y los estudiantes del lote.</p>
-        </div>
-
-        <!-- ================= REGISTROS DE WALLET (admin) ================= -->
-        <div class="pantalla" data-pantalla="participantes">
-          <div class="cabecera fila-cabecera">
-            <div><h1>Registros de wallet</h1><p>Personas que registraron su wallet en <a class="enlace" href="/registro" target="_blank">/registro</a> o <a class="enlace" href="/registroASOBAN" target="_blank">/registroASOBAN</a>.</p></div>
-            <div class="acciones-derecha">
-              <select class="entrada entrada--corta" id="filtro-evento" data-accion-cambio="Cargar_Participantes">
-                <option value="">Todos los módulos</option><option value="foro">Foro</option><option value="asoban">ASOBAN</option>
-              </select>
-              <button class="boton" type="button" data-accion="Exportar_Participantes">↓ Exportar Excel</button>
-            </div>
-          </div>
-          <form class="tarjeta relleno separado fila-formulario" data-formulario="Agregar_Participante">
-            <label class="campo"><span>Nombre</span><input class="entrada" name="nombre" required /></label>
-            <label class="campo"><span>Wallet</span><input class="entrada mono" name="wallet" placeholder="0x…" required /></label>
-            <label class="campo"><span>Módulo</span><select class="entrada" name="evento"><option value="foro">Foro</option><option value="asoban">ASOBAN</option></select></label>
-            <button class="boton boton--primario" type="submit">Agregar</button>
-          </form>
-          <div class="tarjeta tabla-envoltura">
-            <table class="tabla">
-              <thead><tr><th><input type="checkbox" data-accion-cambio="Marcar_Todos_Participantes" /></th><th>Fecha</th><th>Nombre</th><th>Wallet</th><th>Tipo</th><th>Módulo</th><th></th></tr></thead>
-              <tbody id="tabla-participantes"></tbody>
-            </table>
-          </div>
-          <p class="ayuda">Exporta los marcados (o todos) y súbelos en el paso 2 de “Nueva emisión”.</p>
         </div>
 
         <!-- ================= ASISTENTE DE EMISIÓN (admin) ================= -->
@@ -507,9 +420,17 @@
         <div class="pantalla" data-pantalla="tablero">
           <div class="cabecera fila-cabecera">
             <div><h1 id="tab-nombre">Dashboard</h1><p>Crédito, lotes y certificados de tu institución.</p></div>
-            <span class="pastilla">Cuenta de consulta</span>
+            <span class="pastilla">Administración institucional</span>
           </div>
-          <div class="banda banda--info separado">Esta cuenta no emite certificados: arma el lote en “Estudiantes y lotes” y el administrador lo autoriza y emite.</div>
+          <div class="tarjeta relleno separado">
+            <h2>Enlace de registro para tus estudiantes</h2>
+            <p class="ayuda">Compártelo: quien se registre ahí queda automáticamente como estudiante de tu institución.</p>
+            <div class="fila-formulario separado-arriba">
+              <input class="entrada mono" id="tab-ruta" readonly />
+              <button class="boton" type="button" data-accion="Copiar_Ruta_Registro">Copiar enlace</button>
+            </div>
+          </div>
+          <div class="banda banda--info separado">El administrador de la plataforma autoriza y emite los lotes que envías desde “Estudiantes y lotes”.</div>
           <div class="grilla-datos">
             <div class="dato"><span>Crédito disponible</span><b id="tab-credito">$0.00</b></div>
             <div class="dato"><span>Certificados emitidos</span><b id="tab-certificados">0</b></div>
@@ -581,7 +502,7 @@
         <div class="pantalla" data-pantalla="verificar">
           <div class="cabecera fila-cabecera">
             <div><h1>Verificación pública</h1><p>Cualquier persona puede comprobar un certificado, sin iniciar sesión ni conectar una wallet.</p></div>
-            <a class="enlace" data-accion="Volver_Al_Acceso" data-solo-invitado>Iniciar sesión →</a>
+            <a class="enlace" href="/login" data-solo-invitado>Iniciar sesión →</a>
           </div>
           <form class="tarjeta relleno separado" data-formulario="Verificar_Certificado">
             <h2>Buscar el certificado</h2>

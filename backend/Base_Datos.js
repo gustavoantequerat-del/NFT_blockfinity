@@ -3,6 +3,7 @@
 // romper las bases de datos que ya están en uso.
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
+const { Crear_Slug } = require('./Marca_Institucion');
 
 const Base_Datos = new DatabaseSync(path.join(__dirname, 'database.sqlite'));
 
@@ -132,6 +133,12 @@ const Migraciones = [
   'ALTER TABLE lotes_solicitados ADD COLUMN plantilla_archivo TEXT',
   'ALTER TABLE lotes_solicitados ADD COLUMN estudiantes_json TEXT',
   'ALTER TABLE lotes_solicitados ADD COLUMN red TEXT',
+  // Ruta de registro (/registro_<slug>) y marca de cada institución.
+  'ALTER TABLE instituciones ADD COLUMN slug TEXT',
+  'ALTER TABLE instituciones ADD COLUMN color TEXT',
+  'ALTER TABLE instituciones ADD COLUMN logo_archivo TEXT',
+  // Cuenta del estudiante que se registró por la ruta de su institución.
+  'ALTER TABLE estudiantes_institucionales ADD COLUMN usuario_id INTEGER',
 ];
 
 for (const Migracion of Migraciones) {
@@ -145,5 +152,14 @@ for (const Migracion of Migraciones) {
 // Las emisiones hechas antes de existir el switch test/main no tienen red
 // registrada. Se asumen de 'main' (la red con la que ya funcionaba el sistema).
 Base_Datos.exec("UPDATE emisiones SET red = 'main' WHERE red IS NULL");
+
+// Instituciones creadas antes de tener ruta propia: el slug sale del nombre
+// (si se repite se le agrega el id).
+for (const Institucion of Base_Datos.prepare('SELECT id, nombre FROM instituciones WHERE slug IS NULL').all()) {
+  let Slug = Crear_Slug(Institucion.nombre) || `institucion_${Institucion.id}`;
+  if (Base_Datos.prepare('SELECT id FROM instituciones WHERE slug = ?').get(Slug)) Slug = `${Slug}_${Institucion.id}`;
+  Base_Datos.prepare('UPDATE instituciones SET slug = ? WHERE id = ?').run(Slug, Institucion.id);
+}
+Base_Datos.exec('CREATE UNIQUE INDEX IF NOT EXISTS instituciones_slug ON instituciones(slug)');
 
 module.exports = Base_Datos;

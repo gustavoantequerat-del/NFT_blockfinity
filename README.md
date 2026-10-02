@@ -4,7 +4,7 @@ Plataforma para emitir certificados académicos como NFT. Cada PDF lleva un QR c
 
 - **Backend:** Node.js 22+ con Express y SQLite nativo (`node:sqlite`).
 - **Frontend:** una sola app en JavaScript puro (módulos ES) y CSS modular, sin frameworks ni Tailwind. Express la sirve.
-- **Registro de wallet:** forma parte de la misma app. Ya no hay un proyecto React aparte ni un paso de compilación. Se abre en `/registro` y en `/registroASOBAN`.
+- **Sin pasos de compilación:** no hay proyecto React aparte. Todas las rutas (`/login`, `/admin`, `/registro_<institución>`, `/verificar`) son la misma app.
 
 ---
 
@@ -17,8 +17,19 @@ cd backend
 npm install
 cp .env.example .env      # completa las credenciales test y main (ver abajo)
 npm run seed              # crea la institución y las cuentas de prueba
-npm start                 # http://localhost:3000
+npm start                 # http://localhost:3000 → redirige a /login
 ```
+
+## Rutas
+
+| Ruta | Para quién | Qué hace |
+|---|---|---|
+| `/login` | Estudiantes y admins institucionales | Inicio de sesión. Cada cuenta entra a su panel con la marca de su institución. No se pueden crear cuentas aquí |
+| `/admin` | Administrador de la plataforma | Inicio de sesión del administrador. Las cuentas de admin no entran por `/login` y las demás no entran por `/admin` |
+| `/registro_<institución>` | Estudiantes | Registro con nombre, correo, contraseña y wallet. Quien se registra queda como estudiante de esa institución. Ej.: `/registro_rosa_gattorno` |
+| `/verificar` y `/?token=…` | Cualquiera | Verificación pública. El QR del certificado abre `/?token=…&cid=…&red=…` |
+
+La raíz `/` redirige a `/login`, salvo que traiga los parámetros del QR.
 
 Al arrancar, la consola muestra el estado de las dos redes y cuál está activa. El servidor arranca aunque una red no esté configurada: el panel muestra qué variables faltan.
 
@@ -52,7 +63,7 @@ El administrador cambia de modo con el switch **Test | Main** de la barra superi
 
 Las emisiones hechas antes de este cambio se marcan como `main`.
 
-Otras variables: `JWT_SECRET` (obligatoria), `PORT`, `PUBLIC_VERIFY_URL` (dominio público al que apunta el QR), `CERT_QR_*` y `CERT_NAME_*` (posición del QR y del nombre en la plantilla) y `DEMO_STUDENT_WALLET`.
+Otras variables: `JWT_SECRET` (obligatoria), `PORT`, `CORREO_CONTACTO` (correo para que las instituciones pidan su alta), `PUBLIC_VERIFY_URL` (dominio público al que apunta el QR), `CERT_QR_*` y `CERT_NAME_*` (posición del QR y del nombre en la plantilla) y `DEMO_STUDENT_WALLET`.
 
 ---
 
@@ -84,35 +95,51 @@ Al escanear el QR se abre `/?token=…&cid=…&red=…` y el resultado aparece s
 
 ---
 
+## Instituciones
+
+Las instituciones no se registran solas: escriben al correo de `CORREO_CONTACTO`, que se muestra en `/login`, y el administrador las da de alta en **Instituciones → Nueva institución** con:
+
+- **Nombre:** genera la ruta de registro automáticamente. "Rosa Gattorno" crea `/registro_rosa_gattorno`; se quitan acentos y espacios, y el nombre no se puede repetir.
+- **Logo:** PNG, JPG o WebP, máximo 1 MB.
+- **Color de la marca.**
+- **Correo y contraseña del admin institucional:** con esa cuenta la institución entra por `/login`.
+
+La marca se aplica en:
+
+- **`/registro_<institución>`:** header con el color elegido, el logo de Blockfinity Advisors y el logo de la institución. El logo de Blockfinity cambia a la versión blanca o gris según el contraste. Sin logo de institución, se muestra su nombre.
+- **Paneles del admin institucional y del estudiante:** el color reemplaza al acento de toda la interfaz y el logo y el nombre aparecen en el menú lateral. Con colores claros, los textos se oscurecen para que se lean.
+
+En el detalle de la institución, el administrador puede cambiar el color, el logo, el responsable y el correo o la contraseña del admin institucional. El admin institucional ve y comparte el enlace de registro desde su Dashboard.
+
+**Eliminar institución** es exclusivo del administrador y pide escribir el nombre para confirmar. Borra:
+
+- la institución y su ruta de registro;
+- su lista de estudiantes y sus lotes, con las plantillas;
+- su logo;
+- todas sus cuentas: el admin institucional y los estudiantes, que pierden el acceso.
+
+Los NFT ya emitidos siguen en blockchain y en el historial, pero sin institución asociada. Si una institución quita a un estudiante de su lista, ese estudiante también pierde su cuenta.
+
 ## Roles y cuentas de prueba
 
-`npm run seed` crea la institución **UDEMO · Universidad Demo** (con $100 de crédito) y estas cuentas:
+`npm run seed` crea la institución **Universidad Demo** (`/registro_universidad_demo`, con $100 de crédito) y estas cuentas:
 
-| Rol | Correo | Contraseña | Qué ve |
-|---|---|---|---|
-| Administrador | `laura.mendez@universidad.edu` | `demoaccess` | Instituciones, Emisiones, Solicitudes de lotes, Registros de wallet, Nueva emisión, Configuración (switch test/main) |
-| Institución | `consulta@universidad.edu` | `consulta123` | Dashboard, Estudiantes y lotes (arma el lote con su plantilla y lo envía al admin) |
-| Estudiante | `estudiante@universidad.edu` | `estudiante123` | Mis certificados (los NFTs de su wallet) |
+| Rol | Entra por | Correo | Contraseña | Qué ve |
+|---|---|---|---|---|
+| Administrador | `/admin` | `laura.mendez@universidad.edu` | `demoaccess` | Instituciones, Emisiones, Solicitudes de lotes, Nueva emisión, Configuración (switch test/main) |
+| Admin institucional | `/login` | `consulta@universidad.edu` | `consulta123` | Dashboard con el enlace de registro, Estudiantes y lotes |
+| Estudiante | `/login` | `estudiante@universidad.edu` | `estudiante123` | Mis certificados |
 
-La wallet del estudiante demo es la cuenta #1 pública de Hardhat. Úsala **solo en test**.
-
-**Crear cuenta** (en la pantalla de acceso):
-
-- **Estudiante:** la cuenta queda activa de inmediato.
-- **Institución:** la cuenta queda pendiente hasta que el admin la aprueba en **Instituciones**.
-
-Por esa pantalla nunca se pueden crear cuentas de administrador.
-
-Cambia estas contraseñas antes de salir a producción.
+La wallet del estudiante demo es la cuenta #1 pública de Hardhat. Úsala **solo en test**. Cambia estas contraseñas antes de salir a producción.
 
 ### Flujo completo de un lote
 
-1. La institución agrega estudiantes con su wallet, adjunta la plantilla PDF y pulsa **Enviar al administrador**.
+1. Los estudiantes se registran en `/registro_<institución>`, o la institución los agrega a mano. Luego la institución adjunta la plantilla PDF y pulsa **Enviar al administrador**.
 2. El admin lo autoriza en **Solicitudes de lotes**. Solo en MAIN se descuenta el crédito.
 3. El admin pulsa **Emitir**. El asistente se abre con la plantilla y los estudiantes del lote.
 4. El admin genera los PDFs base, confirma y sigue el progreso. El lote queda como `emitida`.
 
-También se puede emitir sin lote: en el asistente se sube la plantilla y un Excel con las columnas `nombre` y `wallet`. **Registros de wallet** exporta ese Excel con las personas que se registraron en `/registro` o en `/registroASOBAN`.
+También se puede emitir sin lote: en el asistente se sube la plantilla y un Excel con las columnas `nombre` y `wallet`.
 
 ---
 
@@ -120,12 +147,13 @@ También se puede emitir sin lote: en el asistente se sube la plantilla y un Exc
 
 | Ruta | Acceso |
 |---|---|
-| `POST /api/login`, `POST /api/registro`, `GET /api/sesion`, `POST /api/olvide-contrasena`, `POST /api/restablecer-contrasena` | público / sesión |
-| `GET /api/publico/verificar?q=…&red=…`, `GET /api/publico/instituciones`, `POST /api/publico/registro-wallet` | público |
+| `POST /api/login` (con `portal: "admin"` desde `/admin`), `GET /api/sesion` | público / sesión |
+| `GET /api/publico/verificar?q=…&red=…`, `GET /api/publico/institucion/:slug`, `POST /api/publico/registro/:slug`, `GET /api/publico/configuracion` | público |
 | `GET /api/panel/red`, `GET /api/panel/red/estado`, `PUT /api/panel/red/modo` | sesión / admin |
-| `/api/panel/resumen`, `/instituciones`, `/solicitudes-acceso`, `/estudiantes`, `/lotes` | admin e institución (solo la suya) |
+| `POST/PATCH/DELETE /api/panel/instituciones` (multipart con logo), `/instituciones/:id/credito` | admin |
+| `/api/panel/resumen`, `/estudiantes`, `/lotes` | admin e institución (solo la suya) |
 | `/api/panel/mis-certificados`, `/api/panel/mi-wallet` | estudiante |
-| `/api/certificados/*` (validar Excel, preparar, emitir, historial, registros de wallet, emisión individual) | admin |
+| `/api/certificados/*` (validar Excel, preparar, emitir, historial, emisión individual) | admin |
 
 Las respuestas tienen la forma `{ exito, mensaje, … }`.
 
@@ -141,14 +169,16 @@ backend/
   Blockchain.js            Contrato: mint, consulta de tokens, cola de minteo
   Ipfs.js                  Pinata
   Plantilla_Pdf.js         Nombre, QR y vista previa del PDF
+  Marca_Institucion.js     Ruta (slug), color y logo de cada institución
   Rutas_*.js               Sesión, panel, público y certificados
+  uploads/logos/           Logos subidos (servidos en /Logos_Instituciones)
   Base_Datos.js            Esquema SQLite y migraciones
   Semilla.js               Cuentas de prueba
 frontend/
-  index.html               Todas las vistas: acceso, registro de wallet y panel
+  index.html               Todas las vistas: acceso, registro de estudiantes y panel
   Scripts/*.js             Un módulo por área (Acceso, Red, Asistente_Emision…)
   Estilos/*.css            Un archivo por área (Base, Componentes, Estructura…)
-  Recursos/                Logos y fuentes del registro de wallet
+  Recursos/Logos/          Logos de Blockfinity (blanco y gris)
 ```
 
 - **Archivos, funciones y variables:** en español y en `Snake_Camel_Case` (`Emitir_Certificado`, `Wallet_Alumno`, `Rutas_Panel.js`).
@@ -165,4 +195,6 @@ frontend/
 | No deja pasar a MAIN | Faltan variables `_MAIN`, el RPC apunta a otro chain ID o la wallet no es owner del contrato. El motivo aparece en **Configuración** |
 | `revisar_token` en una emisión | Otro proceso minteó con la misma wallet mientras se emitía: el QR apunta a otro token |
 | "pdftoppm falló" | Instala `poppler-utils` en el servidor |
+| "Las cuentas de administrador ingresan por /admin" | El admin intentó entrar por `/login` |
+| `/registro_…` dice que la institución no existe | El enlace está mal escrito o la institución fue eliminada |
 | Un certificado de test no verifica en main | Test y main tienen contratos distintos: el QR incluye `red=`, y a mano se elige la red en el buscador |

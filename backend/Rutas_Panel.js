@@ -1,4 +1,4 @@
-// Rutas del panel por rol: instituciones, solicitudes de acceso, estudiantes,
+// Rutas del panel por rol: instituciones (alta, marca y borrado), estudiantes,
 // lotes, vista del estudiante y el switch de red test / main.
 const express = require('express');
 const multer = require('multer');
@@ -10,6 +10,8 @@ const Blockchain = require('./Blockchain');
 const Configuracion_Red = require('./Configuracion_Red');
 const { Requerir_Sesion, Requerir_Rol } = require('./Autenticacion');
 const { Carpeta_Subidas } = require('./Emision_Certificados');
+const Marca = require('./Marca_Institucion');
+const bcrypt = require('bcryptjs');
 
 const Rutas = express.Router();
 const Precio_Por_Certificado = 0.77;
@@ -22,6 +24,21 @@ const Subida_Plantilla = multer({
     filename: (_Peticion, _Archivo, Listo) => Listo(null, `lote-${Date.now()}-${Math.round(Math.random() * 1e6)}.pdf`),
   }),
 });
+
+fs.mkdirSync(Marca.Carpeta_Logos, { recursive: true });
+const Extensiones_Logo = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
+const Subida_Logo = multer({
+  storage: multer.diskStorage({
+    destination: Marca.Carpeta_Logos,
+    filename: (_Peticion, Archivo, Listo) => Listo(null, `logo-${Date.now()}-${Math.round(Math.random() * 1e6)}.${Extensiones_Logo[Archivo.mimetype]}`),
+  }),
+  limits: { fileSize: 1024 * 1024 },
+  fileFilter: (_Peticion, Archivo, Listo) => Listo(Extensiones_Logo[Archivo.mimetype] ? null : Object.assign(new Error('El logo debe ser PNG, JPG o WebP.'), { status: 400 }), Boolean(Extensiones_Logo[Archivo.mimetype])),
+});
+
+function Borrar_Archivo(Ruta) {
+  if (Ruta && fs.existsSync(Ruta)) fs.unlinkSync(Ruta);
+}
 
 const Solo_Admin = Requerir_Rol('admin');
 const Solo_Personal = Requerir_Rol('admin', 'viewer');
@@ -44,10 +61,17 @@ function Completar_Institucion(Institucion) {
     SELECT COUNT(*) AS certificados, SUM(CASE WHEN estado = 'nft_transferido' THEN 1 ELSE 0 END) AS entregados
     FROM emisiones WHERE institucion_id = ? AND red = ?
   `).get(Institucion.id, Configuracion_Red.Obtener_Modo_Activo());
-  let Estado = 'activa';
-  if (!Institucion.wallet) Estado = 'sin wallet';
-  else if (Number(Institucion.credito_usd) < 50) Estado = 'credito bajo';
-  return { ...Institucion, estado: Estado, certificados: Conteo.certificados || 0, entregados: Conteo.entregados || 0 };
+  const Administrador = Base_Datos.prepare("SELECT correo FROM usuarios WHERE institucion_id = ? AND rol = 'viewer' ORDER BY id LIMIT 1").get(Institucion.id);
+  const Estudiantes = Base_Datos.prepare('SELECT COUNT(*) AS cantidad FROM estudiantes_institucionales WHERE institucion_id = ?').get(Institucion.id);
+  return {
+    ...Institucion,
+    ...Marca.Datos_Marca(Institucion),
+    estado: Number(Institucion.credito_usd) < 50 ? 'credito bajo' : 'activa',
+    admin_correo: Administrador?.correo || null,
+    estudiantes: Estudiantes.cantidad,
+    certificados: Conteo.certificados || 0,
+    entregados: Conteo.entregados || 0,
+  };
 }
 
 function Listar_Instituciones(Peticion) {
@@ -96,7 +120,6 @@ Rutas.get('/resumen', Solo_Personal, (Peticion, Respuesta) => {
     exito: true,
     instituciones: Instituciones,
     resumen: {
-      solicitudes_acceso: Es_Admin(Peticion) ? Pendientes("SELECT COUNT(*) AS cantidad FROM solicitudes_acceso WHERE estado = 'pendiente'") : 0,
       lotes_pendientes: Es_Admin(Peticion)
         ? Pendientes("SELECT COUNT(*) AS cantidad FROM lotes_solicitados WHERE estado = 'pendiente'")
         : Pendientes("SELECT COUNT(*) AS cantidad FROM lotes_solicitados WHERE estado = 'pendiente' AND institucion_id = ?", Institucion_Id),
@@ -104,29 +127,108 @@ Rutas.get('/resumen', Solo_Personal, (Peticion, Respuesta) => {
   });
 });
 
-Rutas.post('/instituciones', Solo_Admin, (Peticion, Respuesta) => {
+function Validar_Cuenta_Institucional(Correo, Contrasena, Obligatoria, Usuario_Id = null) {
+  if (Obligatoria && (!Correo || !Contrasena)) return 'Correo y contraseña del administrador institucional son requeridos.';
+  if (Correo && !Es_Correo_Valido(Correo)) return 'El correo del administrador institucional no es válido.';
+  if (Contrasena && Contrasena.length < 8) return 'La contraseña debe tener al menos 8 caracteres.';
+  const Existente = Correo && Base_Datos.prepare('SELECT id FROM usuarios WHERE correo = ?').get(Correo);
+  if (Existente && Existente.id !== Usuario_Id) return 'Ya existe una cuenta con ese correo.';
+  return null;
+}
+
+// Alta de institución con su ruta de registro, marca y cuenta del admin
+// institucional (rol "viewer"). Multipart: logo opcional.
+Rutas.post('/instituciones', Solo_Admin, Subida_Logo.single('logo'), async (Peticion, Respuesta) => {
   const Nombre = String(Peticion.body?.nombre || '').trim();
-  const Etiqueta = String(Peticion.body?.etiqueta || '').trim().toUpperCase();
-  const Responsable_Nombre = String(Peticion.body?.responsable_nombre || '').trim();
-  const Responsable_Correo = String(Peticion.body?.responsable_correo || '').trim().toLowerCase();
-  const Wallet = String(Peticion.body?.wallet || '').trim();
+  const Slug = Marca.Crear_Slug(Nombre);
+  const Color = String(Peticion.body?.color || Marca.Color_Predeterminado);
+  const Responsable = String(Peticion.body?.responsable_nombre || '').trim();
+  const Correo = String(Peticion.body?.correo_admin || '').trim().toLowerCase();
+  const Contrasena = String(Peticion.body?.contrasena_admin || '');
   const Credito = Number(Peticion.body?.credito_usd) || 0;
+  const Fallar = (Codigo, Mensaje) => { Borrar_Archivo(Peticion.file?.path); Respuesta.status(Codigo).json({ exito: false, mensaje: Mensaje }); };
 
-  if (!Nombre || !Etiqueta) return Respuesta.status(400).json({ exito: false, mensaje: 'Nombre y etiqueta son requeridos.' });
-  if (Responsable_Correo && !Es_Correo_Valido(Responsable_Correo)) return Respuesta.status(400).json({ exito: false, mensaje: 'El correo del responsable no es válido.' });
-  if (Wallet && !Blockchain.Es_Wallet_Valida(Wallet)) return Respuesta.status(400).json({ exito: false, mensaje: 'La wallet no tiene un formato válido.' });
+  if (!Nombre || !Slug) return Fallar(400, 'El nombre de la institución es requerido.');
+  if (!Marca.Es_Color_Valido(Color)) return Fallar(400, 'El color debe tener el formato #RRGGBB.');
+  if (Base_Datos.prepare('SELECT id FROM instituciones WHERE slug = ?').get(Slug)) return Fallar(409, `Ya existe una institución con la ruta /registro_${Slug}.`);
+  const Error_Cuenta = Validar_Cuenta_Institucional(Correo, Contrasena, true);
+  if (Error_Cuenta) return Fallar(400, Error_Cuenta);
 
+  const Hash = await bcrypt.hash(Contrasena, 12);
+  Base_Datos.exec('BEGIN');
   try {
     const Resultado = Base_Datos.prepare(`
-      INSERT INTO instituciones (nombre, etiqueta, responsable_nombre, responsable_correo, wallet, credito_usd, creado_por)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(Nombre, Etiqueta, Responsable_Nombre || null, Responsable_Correo || null, Wallet || null, Credito, Peticion.Usuario.id);
+      INSERT INTO instituciones (nombre, etiqueta, slug, color, logo_archivo, responsable_nombre, responsable_correo, credito_usd, creado_por)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(Nombre, Slug.toUpperCase(), Slug, Color, Peticion.file?.filename || null, Responsable || null, Correo, Credito, Peticion.Usuario.id);
+    Base_Datos.prepare("INSERT INTO usuarios (correo, contrasena_hash, nombre, rol, institucion_id, estado) VALUES (?, ?, ?, 'viewer', ?, 'activo')")
+      .run(Correo, Hash, Responsable || `Admin ${Nombre}`, Resultado.lastInsertRowid);
+    Base_Datos.exec('COMMIT');
     const Institucion = Base_Datos.prepare('SELECT * FROM instituciones WHERE id = ?').get(Resultado.lastInsertRowid);
     Respuesta.status(201).json({ exito: true, institucion: Completar_Institucion(Institucion) });
   } catch (Error_Insercion) {
-    const Mensaje = /unique/i.test(Error_Insercion.message) ? 'La etiqueta ya está registrada.' : Error_Insercion.message;
-    Respuesta.status(409).json({ exito: false, mensaje: Mensaje });
+    Base_Datos.exec('ROLLBACK');
+    Fallar(500, Error_Insercion.message);
   }
+});
+
+// Edición: color, logo, responsable y cuenta del admin institucional. El
+// nombre (y por lo tanto la ruta de registro) no cambia.
+Rutas.patch('/instituciones/:id', Solo_Admin, Subida_Logo.single('logo'), async (Peticion, Respuesta) => {
+  const Institucion = Base_Datos.prepare('SELECT * FROM instituciones WHERE id = ?').get(Number(Peticion.params.id));
+  const Fallar = (Codigo, Mensaje) => { Borrar_Archivo(Peticion.file?.path); Respuesta.status(Codigo).json({ exito: false, mensaje: Mensaje }); };
+  if (!Institucion) return Fallar(404, 'Institución no encontrada.');
+
+  const Color = String(Peticion.body?.color || Institucion.color || Marca.Color_Predeterminado);
+  const Responsable = String(Peticion.body?.responsable_nombre ?? Institucion.responsable_nombre ?? '').trim();
+  const Correo = String(Peticion.body?.correo_admin || '').trim().toLowerCase();
+  const Contrasena = String(Peticion.body?.contrasena_admin || '');
+  if (!Marca.Es_Color_Valido(Color)) return Fallar(400, 'El color debe tener el formato #RRGGBB.');
+
+  const Administrador = Base_Datos.prepare("SELECT * FROM usuarios WHERE institucion_id = ? AND rol = 'viewer' ORDER BY id LIMIT 1").get(Institucion.id);
+  const Error_Cuenta = Validar_Cuenta_Institucional(Correo, Contrasena, !Administrador && (Correo || Contrasena), Administrador?.id);
+  if (Error_Cuenta) return Fallar(400, Error_Cuenta);
+
+  if (Peticion.file) Borrar_Archivo(Institucion.logo_archivo && path.join(Marca.Carpeta_Logos, Institucion.logo_archivo));
+  Base_Datos.prepare('UPDATE instituciones SET color = ?, responsable_nombre = ?, responsable_correo = COALESCE(?, responsable_correo), logo_archivo = COALESCE(?, logo_archivo) WHERE id = ?')
+    .run(Color, Responsable || null, Correo || null, Peticion.file?.filename || null, Institucion.id);
+
+  if (Administrador) {
+    if (Correo) Base_Datos.prepare('UPDATE usuarios SET correo = ? WHERE id = ?').run(Correo, Administrador.id);
+    if (Contrasena) Base_Datos.prepare('UPDATE usuarios SET contrasena_hash = ? WHERE id = ?').run(await bcrypt.hash(Contrasena, 12), Administrador.id);
+  } else if (Correo && Contrasena) {
+    Base_Datos.prepare("INSERT INTO usuarios (correo, contrasena_hash, nombre, rol, institucion_id, estado) VALUES (?, ?, ?, 'viewer', ?, 'activo')")
+      .run(Correo, await bcrypt.hash(Contrasena, 12), Responsable || `Admin ${Institucion.nombre}`, Institucion.id);
+  }
+  Respuesta.json({ exito: true, institucion: Completar_Institucion(Base_Datos.prepare('SELECT * FROM instituciones WHERE id = ?').get(Institucion.id)) });
+});
+
+// Borra la institución con sus cuentas (admin institucional y estudiantes),
+// su lista de estudiantes y sus lotes. Las emisiones quedan en el historial
+// (el NFT sigue existiendo en blockchain) pero sin institución asociada.
+Rutas.delete('/instituciones/:id', Solo_Admin, (Peticion, Respuesta) => {
+  const Institucion = Base_Datos.prepare('SELECT * FROM instituciones WHERE id = ?').get(Number(Peticion.params.id));
+  if (!Institucion) return Respuesta.status(404).json({ exito: false, mensaje: 'Institución no encontrada.' });
+  const Plantillas = Base_Datos.prepare('SELECT plantilla_archivo FROM lotes_solicitados WHERE institucion_id = ? AND plantilla_archivo IS NOT NULL').all(Institucion.id);
+
+  Base_Datos.exec('BEGIN');
+  try {
+    Base_Datos.prepare("DELETE FROM reset_tokens WHERE user_id IN (SELECT id FROM usuarios WHERE institucion_id = ? AND rol != 'admin')").run(Institucion.id);
+    Base_Datos.prepare('DELETE FROM solicitudes_acceso WHERE institucion_id = ?').run(Institucion.id);
+    Base_Datos.prepare("DELETE FROM usuarios WHERE institucion_id = ? AND rol != 'admin'").run(Institucion.id);
+    Base_Datos.prepare('DELETE FROM estudiantes_institucionales WHERE institucion_id = ?').run(Institucion.id);
+    Base_Datos.prepare('DELETE FROM lotes_solicitados WHERE institucion_id = ?').run(Institucion.id);
+    Base_Datos.prepare('UPDATE emisiones SET institucion_id = NULL WHERE institucion_id = ?').run(Institucion.id);
+    Base_Datos.prepare('DELETE FROM instituciones WHERE id = ?').run(Institucion.id);
+    Base_Datos.exec('COMMIT');
+  } catch (Error_Borrado) {
+    Base_Datos.exec('ROLLBACK');
+    return Respuesta.status(500).json({ exito: false, mensaje: Error_Borrado.message });
+  }
+  Borrar_Archivo(Institucion.logo_archivo && path.join(Marca.Carpeta_Logos, Institucion.logo_archivo));
+  for (const Lote of Plantillas) Borrar_Archivo(path.join(Carpeta_Plantillas, Lote.plantilla_archivo));
+  console.log(`🗑️ Institución "${Institucion.nombre}" eliminada por ${Peticion.Usuario.correo}`);
+  Respuesta.json({ exito: true });
 });
 
 // Recarga (o descuento) de crédito de una institución.
@@ -135,32 +237,6 @@ Rutas.post('/instituciones/:id/credito', Solo_Admin, (Peticion, Respuesta) => {
   if (!Number.isFinite(Monto) || Monto === 0) return Respuesta.status(400).json({ exito: false, mensaje: 'Ingresa un monto distinto de cero.' });
   const Resultado = Base_Datos.prepare('UPDATE instituciones SET credito_usd = MAX(credito_usd + ?, 0) WHERE id = ?').run(Monto, Number(Peticion.params.id));
   if (!Resultado.changes) return Respuesta.status(404).json({ exito: false, mensaje: 'Institución no encontrada.' });
-  Respuesta.json({ exito: true });
-});
-
-// ---------- Solicitudes de acceso (cuentas de institución) ----------
-
-Rutas.get('/solicitudes-acceso', Solo_Admin, (_Peticion, Respuesta) => {
-  const Solicitudes = Base_Datos.prepare(`
-    SELECT s.*, u.nombre, u.correo, i.nombre AS institucion_nombre, i.etiqueta AS institucion_etiqueta
-    FROM solicitudes_acceso s
-    JOIN usuarios u ON u.id = s.usuario_id
-    JOIN instituciones i ON i.id = s.institucion_id
-    WHERE s.estado = 'pendiente'
-    ORDER BY s.creado_en DESC, s.id DESC
-  `).all();
-  Respuesta.json({ exito: true, solicitudes: Solicitudes });
-});
-
-Rutas.post('/solicitudes-acceso/:id/resolver', Solo_Admin, (Peticion, Respuesta) => {
-  const Aprobar = Peticion.body?.accion === 'aprobar';
-  if (!['aprobar', 'rechazar'].includes(Peticion.body?.accion)) return Respuesta.status(400).json({ exito: false, mensaje: 'Acción inválida.' });
-  const Solicitud = Base_Datos.prepare("SELECT * FROM solicitudes_acceso WHERE id = ? AND estado = 'pendiente'").get(Number(Peticion.params.id));
-  if (!Solicitud) return Respuesta.status(404).json({ exito: false, mensaje: 'Solicitud pendiente no encontrada.' });
-
-  Base_Datos.prepare("UPDATE solicitudes_acceso SET estado = ?, resuelto_por = ?, resuelto_en = datetime('now') WHERE id = ?")
-    .run(Aprobar ? 'aprobada' : 'rechazada', Peticion.Usuario.id, Solicitud.id);
-  Base_Datos.prepare('UPDATE usuarios SET estado = ? WHERE id = ?').run(Aprobar ? 'activo' : 'rechazado', Solicitud.usuario_id);
   Respuesta.json({ exito: true });
 });
 
@@ -195,6 +271,8 @@ Rutas.delete('/estudiantes/:id', Solo_Personal, (Peticion, Respuesta) => {
     return Respuesta.status(403).json({ exito: false, mensaje: 'No puedes modificar este estudiante.' });
   }
   Base_Datos.prepare('DELETE FROM estudiantes_institucionales WHERE id = ?').run(Estudiante.id);
+  // Si se registró por la ruta de la institución, también pierde el acceso.
+  if (Estudiante.usuario_id) Base_Datos.prepare("DELETE FROM usuarios WHERE id = ? AND rol = 'student'").run(Estudiante.usuario_id);
   Respuesta.json({ exito: true });
 });
 
@@ -289,6 +367,7 @@ Rutas.put('/mi-wallet', Requerir_Rol('student'), (Peticion, Respuesta) => {
   const Wallet = String(Peticion.body?.wallet || '').trim();
   if (!Blockchain.Es_Wallet_Valida(Wallet)) return Respuesta.status(400).json({ exito: false, mensaje: 'La wallet no tiene un formato válido.' });
   Base_Datos.prepare('UPDATE usuarios SET wallet = ? WHERE id = ?').run(Wallet, Peticion.Usuario.id);
+  Base_Datos.prepare('UPDATE estudiantes_institucionales SET wallet = ? WHERE usuario_id = ?').run(Wallet, Peticion.Usuario.id);
   Respuesta.json({ exito: true, wallet: Wallet });
 });
 

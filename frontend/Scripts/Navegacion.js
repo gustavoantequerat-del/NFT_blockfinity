@@ -1,11 +1,11 @@
-// Vistas (acceso, registro de wallet, app) y pantallas dentro de la app.
+// Vistas (acceso, registro de estudiantes, app) y pantallas dentro de la app.
 // Cada módulo registra sus pantallas con Registrar_Pantalla().
 import { Estado, Rol_Actual } from './Estado.js';
 import { Poner_Texto, Mostrar_Aviso } from './Utilidades.js';
 
 const Pantallas = {};
 const Inicio_Por_Rol = { admin: 'instituciones', viewer: 'tablero', student: 'certificados', invitado: 'verificar' };
-const Nombres_Rol = { admin: 'Administración', viewer: 'Institución (consulta)', student: 'Estudiante', invitado: 'Acceso público' };
+const Nombres_Rol = { admin: 'Administración', viewer: 'Administración institucional', student: 'Estudiante', invitado: 'Acceso público' };
 
 export function Registrar_Pantalla(Nombre, { Titulo, Roles, Al_Mostrar }) {
   Pantallas[Nombre] = { Titulo, Roles, Al_Mostrar };

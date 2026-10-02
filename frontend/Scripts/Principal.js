@@ -5,15 +5,14 @@ import * as Red from './Red.js';
 import * as Instituciones from './Instituciones.js';
 import * as Asistente_Emision from './Asistente_Emision.js';
 import * as Panel_Institucion from './Panel_Institucion.js';
-import * as Participantes from './Participantes.js';
 import * as Estudiante from './Estudiante.js';
 import * as Verificacion from './Verificacion.js';
-import * as Registro_Wallet from './Registro_Wallet.js';
+import * as Registro_Estudiante from './Registro_Estudiante.js';
 import { Leer_Token } from './Api.js';
 import { Mostrar_Pantalla } from './Navegacion.js';
 import { Mostrar_Aviso } from './Utilidades.js';
 
-const Modulos = [Acceso, Red, Instituciones, Asistente_Emision, Panel_Institucion, Participantes, Estudiante, Verificacion, Registro_Wallet];
+const Modulos = [Acceso, Red, Instituciones, Asistente_Emision, Panel_Institucion, Estudiante, Verificacion, Registro_Estudiante];
 const Acciones = Object.assign({ Alternar_Menu: () => document.body.classList.toggle('menu-abierto') }, ...Modulos.map((M) => M.Acciones || {}));
 const Formularios = Object.assign({}, ...Modulos.map((M) => M.Formularios || {}));
 const Archivos = Object.assign({}, ...Modulos.map((M) => M.Archivos || {}));
@@ -51,6 +50,12 @@ document.addEventListener('change', (Evento) => {
   if (Nodo.dataset.accionCambio && Acciones[Nodo.dataset.accionCambio]) Ejecutar(Acciones[Nodo.dataset.accionCambio], Nodo, Evento);
 });
 
+// Campos que reaccionan mientras se escribe (ej. vista previa de la ruta).
+document.addEventListener('input', (Evento) => {
+  const Nodo = Evento.target;
+  if (Nodo.dataset.accionEntrada && Acciones[Nodo.dataset.accionEntrada]) Ejecutar(Acciones[Nodo.dataset.accionEntrada], Nodo, Evento);
+});
+
 document.addEventListener('submit', async (Evento) => {
   const Formulario = Evento.target.closest('[data-formulario]');
   if (!Formulario || !Formularios[Formulario.dataset.formulario]) return;
@@ -61,15 +66,18 @@ document.addEventListener('submit', async (Evento) => {
   if (Boton) Boton.disabled = false;
 });
 
+// Rutas: /login y /admin (acceso), /registro_<institución>, /verificar y
+// la raíz con ?token=… (QR del certificado).
 async function Arrancar() {
-  if (Registro_Wallet.Es_Ruta_Registro()) return Registro_Wallet.Arrancar_Registro_Wallet();
+  if (Registro_Estudiante.Es_Ruta_Registro()) return Registro_Estudiante.Arrancar_Registro_Estudiante();
 
-  // El QR del certificado abre "/?token=<id>&cid=<cid>&red=<modo>".
   const Parametros = new URLSearchParams(window.location.search);
-  if (Parametros.get('token') || Parametros.get('cid')) {
+  const Viene_Del_Qr = Parametros.get('token') || Parametros.get('cid');
+  if (Viene_Del_Qr || window.location.pathname.startsWith('/verificar')) {
     if (Leer_Token()) await Acceso.Entrar_A_La_App('verificar').catch(() => Mostrar_Pantalla('verificar'));
     else Mostrar_Pantalla('verificar');
-    document.getElementById('ver-consulta').value = Parametros.get('token') || Parametros.get('cid');
+    if (!Viene_Del_Qr) return;
+    document.getElementById('ver-consulta').value = Viene_Del_Qr;
     document.getElementById('ver-red').value = Parametros.get('red') || '';
     return Verificacion.Verificar(window.location.href);
   }
