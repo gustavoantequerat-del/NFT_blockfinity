@@ -602,6 +602,13 @@ async function mintCertificate(toWallet, tokenURI, onHash) {
   };
 }
 
+// Nombre legible de la red configurada, para mostrar en la interfaz.
+const NETWORK_NAMES = {
+  1: 'Ethereum Mainnet',
+  11155111: 'Sepolia · testnet',
+};
+const networkName = NETWORK_NAMES[expectedChainId] || `Chain ID ${expectedChainId}`;
+
 module.exports = {
   web3,
   nftContract,
@@ -609,6 +616,7 @@ module.exports = {
   contractAddress,
   explorerBaseUrl,
   expectedChainId,
+  networkName,
   validateNetwork,
   generatePdfPreview,
   uploadFileToIPFS,

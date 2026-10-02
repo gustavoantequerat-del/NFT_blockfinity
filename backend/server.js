@@ -9,6 +9,7 @@ const { requireAuth, JWT_SECRET } = require('./auth');
 const certificadosRouter = require('./certificados');
 const registroRouter = require('./registro');
 const blockchain = require('./blockchain');
+const panel = require('./panel');
 
 const app        = express();
 const PORT       = process.env.PORT || 3000;
@@ -44,8 +45,18 @@ app.use('/registroASOBAN', express.static(path.join(__dirname, '..', 'registro-w
 // (case-sensitive) y usar el índice por defecto de express.static.
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
-// Todas las rutas de certificados quedan protegidas: solo un usuario con JWT válido puede usarlas.
-app.use('/api/certificados', requireAuth, certificadosRouter);
+// Todas las rutas de certificados quedan protegidas con JWT. Emitir y ver el
+// historial es exclusivo del administrador; los demás roles solo leen /config.
+function requireAdminExceptConfig(req, res, next) {
+  if (req.user?.rol === 'admin' || (req.method === 'GET' && req.path === '/config')) return next();
+  res.status(403).json({ error: 'Esta accion requiere una cuenta administradora.' });
+}
+app.use('/api/certificados', requireAuth, requireAdminExceptConfig, certificadosRouter);
+
+// El nuevo panel separa las consultas publicas de los flujos institucionales
+// protegidos por JWT y rol.
+app.use('/api/panel', panel.router);
+app.use('/api/public', panel.publicRouter);
 
 // Público a propósito: la página /registro no requiere login (la usa cualquier
 // visitante para registrar su wallet, no un administrador del panel).
@@ -69,8 +80,12 @@ app.post('/api/login', async (req, res) => {
     return res.status(401).json({ error: 'Correo o contraseña incorrectos.' });
   }
 
+  if (usuario.estado && usuario.estado !== 'activo') {
+    return res.status(403).json({ error: 'Tu cuenta aun no esta habilitada por el administrador.' });
+  }
+
   const token = jwt.sign(
-    { id: usuario.id, correo: usuario.correo, rol: usuario.rol },
+    { id: usuario.id, correo: usuario.correo, rol: usuario.rol, institucion_id: usuario.institucion_id || null },
     JWT_SECRET,
     { expiresIn: '8h' }
   );
@@ -82,12 +97,14 @@ app.post('/api/login', async (req, res) => {
       correo: usuario.correo,
       nombre: usuario.nombre,
       rol:    usuario.rol,
+      institucionId: usuario.institucion_id || null,
+      wallet: usuario.wallet || null,
     },
   });
 });
 
 app.post('/api/register', async (req, res) => {
-  const { nombre, correo, contrasena } = req.body ?? {};
+  const { nombre, correo, contrasena, institucionId } = req.body ?? {};
 
   if (!nombre || !correo || !contrasena) {
     return res.status(400).json({ error: 'Nombre, correo y contraseña son requeridos.' });
@@ -111,16 +128,34 @@ app.post('/api/register', async (req, res) => {
 
   const hash = await bcrypt.hash(contrasena, 12);
 
-  db.prepare(
-    'INSERT INTO usuarios (correo, contrasena_hash, nombre) VALUES (?, ?, ?)'
-  ).run(correo.trim().toLowerCase(), hash, nombre.trim());
+  const institutionId = Number(institucionId) || null;
+  if (institutionId) {
+    const institution = db.prepare('SELECT id FROM instituciones WHERE id = ?').get(institutionId);
+    if (!institution) return res.status(400).json({ error: 'La institucion seleccionada no existe.' });
+  }
+
+  const info = db.prepare(
+    'INSERT INTO usuarios (correo, contrasena_hash, nombre, rol, institucion_id, estado) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(
+    correo.trim().toLowerCase(),
+    hash,
+    nombre.trim(),
+    institutionId ? 'viewer' : 'admin',
+    institutionId,
+    institutionId ? 'pendiente' : 'activo'
+  );
+
+  if (institutionId) {
+    db.prepare('INSERT INTO solicitudes_acceso (usuario_id, institucion_id) VALUES (?, ?)').run(info.lastInsertRowid, institutionId);
+    return res.status(201).json({ mensaje: 'Solicitud enviada. Un administrador debe aprobar tu acceso.', pendiente: true });
+  }
 
   res.status(201).json({ mensaje: 'Cuenta creada correctamente.' });
 });
 
 app.get('/api/me', requireAuth, (req, res) => {
   const usuario = db
-    .prepare('SELECT id, correo, nombre, rol FROM usuarios WHERE id = ?')
+    .prepare('SELECT id, correo, nombre, rol, institucion_id, estado, wallet FROM usuarios WHERE id = ?')
     .get(req.user.id);
 
   if (!usuario) {

@@ -1,1377 +1,198 @@
-/* ============================================================
-   Certificados NFT · App — navegación, branding y simulaciones
-   ============================================================ */
+/* Certificados NFT: panel institucional conectado al API real. */
 (function () {
-  "use strict";
+  'use strict';
 
-  var LS_LOGO   = "certnft_logo";
-  var LS_NAME   = "certnft_instname";
-  var LS_SCREEN = "certnft_screen";
-  var LS_TOKEN  = "certnft_token";
+  var state = { token: localStorage.getItem('certnft_token'), user: null, institutions: [], students: [], batches: [], template: null, excel: null, rows: [], prepared: [], job: null, activeInstitution: null, config: null, lastResult: null };
+  var screens = { admin: ['instituciones', 'dashboard', 'solicitudes', 'wizard', 'config', 'verify', 'inst', 'progress', 'result'], viewer: ['panel', 'alumnos', 'verify'], student: ['certs', 'verify'], guest: ['verify'] };
+  var homes = { admin: 'instituciones', viewer: 'panel', student: 'certs', guest: 'verify' };
+  var titles = { instituciones: 'Instituciones', inst: 'Institucion', dashboard: 'Emisiones', solicitudes: 'Solicitudes de lotes', wizard: 'Nueva emision', config: 'Configuracion', panel: 'Dashboard', alumnos: 'Estudiantes', certs: 'Mis certificados', verify: 'Verificacion publica', progress: 'Procesando emision', result: 'Resultado y trazabilidad' };
 
-  /* ---------------- branding (white-label) ---------------- */
-  function defaultLogoMarkup(name) {
-    var initials = (name || "Certificados NFT").trim().split(/\s+/).slice(0, 2)
-      .map(function (w) { return w[0] ? w[0].toUpperCase() : ""; }).join("");
-    if (!initials) initials = "CN";
-    return '<span class="logo-fallback"><span class="glyph"></span>' + initials + "</span>";
+  function byId(id) { return document.getElementById(id); }
+  function setText(id, value) { var node = byId(id); if (node) node.textContent = value == null ? '-' : value; }
+  function esc(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function short(value) { value = String(value || ''); return value.length > 12 ? value.slice(0, 6) + '...' + value.slice(-4) : (value || '-'); }
+  function money(value) { return '$' + Number(value || 0).toFixed(2); }
+  function toast(message, error) { var node = byId('toast'); if (!node) return; setText('toast-msg', message); node.querySelector('.tk').textContent = error ? '!' : 'OK'; node.classList.add('show'); clearTimeout(toast.timer); toast.timer = setTimeout(function () { node.classList.remove('show'); }, 2800); }
+  function headers(json) { var output = {}; if (state.token) output.Authorization = 'Bearer ' + state.token; if (json) output['Content-Type'] = 'application/json'; return output; }
+  function api(url, options) {
+    options = options || {}; options.headers = Object.assign({}, headers(options.json), options.headers || {});
+    if (options.json) { options.body = JSON.stringify(options.json); delete options.json; }
+    return fetch(url, options).then(function (response) { return response.json().catch(function () { return {}; }).then(function (data) { if (!response.ok) throw new Error(data.message || data.error || 'No se pudo completar la operacion.'); return data; }); });
   }
+  function role() { return state.user?.rol || 'guest'; }
+  function allowed(screen) { return (screens[role()] || screens.guest).indexOf(screen) !== -1; }
+  function homeScreen() { return homes[role()] || 'verify'; }
+  function activeId() { return Number(state.activeInstitution || state.user?.institucion_id || state.user?.institucionId || state.institutions[0]?.id || 0); }
+  function currentInstitution() { return state.institutions.find(function (item) { return Number(item.id) === activeId(); }) || state.institutions[0]; }
+  function walletValid(wallet) { return /^0x[a-fA-F0-9]{40}$/.test(String(wallet || '')); }
+  function statusTag(status) { return '<span class="tag ' + (status === 'activa' || status === 'aprobada' ? 'ok' : status === 'pendiente' || status === 'credito bajo' ? 'warn' : 'err') + '">' + esc(status) + '</span>'; }
 
-  function isValidLogo(v) {
-    return typeof v === "string" && /^data:image\//.test(v) && v.length > 500;
+  function applyUser() {
+    var user = state.user || {}; var initials = (user.nombre || 'Usuario').split(/\s+/).slice(0, 2).map(function (part) { return part[0] || ''; }).join('').toUpperCase();
+    setText('user-name', user.nombre || 'Visitante'); setText('user-role', { admin: 'Administracion', viewer: 'Consulta institucional', student: 'Estudiante' }[user.rol] || 'Acceso publico'); setText('user-initials', user.nombre ? initials : '-');
+    document.querySelectorAll('[data-role]').forEach(function (node) { node.hidden = node.getAttribute('data-role') !== role(); });
+    document.body.setAttribute('data-panel', role()); setText('logout-btn', state.user ? 'Cerrar sesion' : 'Iniciar sesion');
   }
-
-  function applyBranding() {
-    var logo = localStorage.getItem(LS_LOGO);
-    if (!isValidLogo(logo)) logo = null;
-    var name = localStorage.getItem(LS_NAME) || "Certificados NFT";
-
-    document.querySelectorAll("[data-brand] .logo-slot").forEach(function (slot) {
-      slot.innerHTML = logo
-        ? '<img class="logo-img" src="' + logo + '" alt="Logo institución" />'
-        : defaultLogoMarkup(name);
-    });
-    document.querySelectorAll("[data-brand-name]").forEach(function (el) {
-      el.textContent = name;
-    });
-
-    var nameInput = document.getElementById("cfg-instname");
-    if (nameInput && document.activeElement !== nameInput)
-      nameInput.value = (name === "Certificados NFT" ? "" : name);
-
-    var prev      = document.getElementById("logo-preview");
-    var removeBtn = document.getElementById("logo-remove-btn");
-    if (prev) {
-      if (logo) {
-        prev.innerHTML = '<img src="' + logo + '" alt="Logo" />';
-        if (removeBtn) removeBtn.hidden = false;
-      } else {
-        prev.innerHTML = '<span class="ph-txt">SIN LOGO<br />sube un archivo<br />de imagen</span>';
-        if (removeBtn) removeBtn.hidden = true;
-      }
-    }
+  function showScreen(screen) {
+    if (!allowed(screen)) screen = homeScreen(); applyUser();
+    byId('view-login').classList.remove('active'); byId('view-app').classList.add('active');
+    document.querySelectorAll('[data-screen-panel]').forEach(function (node) { node.style.display = node.getAttribute('data-screen-panel') === screen ? '' : 'none'; });
+    document.querySelectorAll('.nav-item[data-screen]').forEach(function (node) { node.classList.toggle('active', node.getAttribute('data-screen') === screen); });
+    setText('topbar-title', titles[screen] || 'Panel'); setText('topbar-crumb', screen === 'progress' ? 'Procesando' : ''); localStorage.setItem('certnft_screen', screen); window.scrollTo(0, 0);
+    if (screen === 'instituciones' || screen === 'inst') renderInstitutions();
+    if (screen === 'alumnos') loadStudents();
+    if (screen === 'solicitudes') loadBatches();
+    if (screen === 'dashboard') loadHistory();
+    if (screen === 'panel') { loadBatches(); renderViewerPanel(); }
+    if (screen === 'wizard') refreshWizard();
+    if (screen === 'result') renderResult();
+    if (screen === 'certs') loadMyCerts();
   }
-
-  /* ---------------- view + screen routing ---------------- */
-  var loginView = document.getElementById("view-login");
-  var appView   = document.getElementById("view-app");
-
-  var titles = {
-    dashboard: ["Inicio",        ""],
-    wizard:    ["Nueva emisión", ""],
-    config:    ["Configuración", ""],
-    progress:  ["Nueva emisión", "Procesando"],
-    result:    ["Resultado",     "Egreso-Derecho-2026A"],
-  };
-  var navFor = {
-    dashboard: "dashboard", wizard: "wizard", config: "config",
-    progress: "wizard",     result: "wizard",
-  };
-
-  // Al cambiar de pantalla, dispara la carga de datos reales si corresponde (dashboard/progreso/resultado).
-  function showScreen(name) {
-    if (!titles[name]) name = "dashboard";
-
-    loginView.classList.remove("active");
-    appView.classList.add("active");
-
-    document.querySelectorAll("[data-screen-panel]").forEach(function (p) {
-      p.style.display = p.getAttribute("data-screen-panel") === name ? "" : "none";
-    });
-    document.querySelectorAll(".nav-item[data-screen]").forEach(function (n) {
-      n.classList.toggle("active", n.getAttribute("data-screen") === navFor[name]);
-    });
-
-    var t = titles[name];
-    document.getElementById("topbar-title").textContent  = t[0];
-    document.getElementById("topbar-crumb").textContent  = t[1] ? "· " + t[1] : "";
-    document.getElementById("content").scrollTop = 0;
-    window.scrollTo(0, 0);
-    localStorage.setItem(LS_SCREEN, name);
-
-    if (name === "progress")  startProgress();
-    if (name === "result")    renderResultScreen();
-    if (name === "dashboard") loadDashboard();
-  }
-
-  /* ---------------- panel routing (login / register / forgot / reset) ---------------- */
-  var PANELS = ["login", "register", "forgot", "reset", "restricted"];
-
-  function showPanel(name) {
-    PANELS.forEach(function (p) {
-      var el = document.getElementById("panel-" + p);
-      if (el) el.style.display = (p === name) ? "" : "none";
+  function fillInstitutionSelects() {
+    document.querySelectorAll('[data-inst-select]').forEach(function (select) {
+      var old = select.value; select.innerHTML = state.institutions.map(function (item) { return '<option value="' + item.id + '">' + esc(item.etiqueta) + ' - ' + esc(item.nombre) + '</option>'; }).join(''); select.value = old || String(activeId());
     });
   }
 
-  /* ---------------- helper: rellenar datos de usuario en sidebar ---------------- */
-  function setUserInfo(nombre) {
-    var nameEl = document.getElementById("sidebar-nombre");
-    var avatar = document.getElementById("sidebar-avatar");
-    if (nameEl && nombre) nameEl.textContent = nombre;
-    if (avatar && nombre) {
-      avatar.textContent = nombre.trim().split(/\s+/).slice(0, 2)
-        .map(function (w) { return w[0] ? w[0].toUpperCase() : ""; }).join("");
-    }
+  function loadPanel() {
+    return api('/api/panel/overview').then(function (data) { state.institutions = data.institutions || []; state.user = Object.assign({}, state.user || {}, data.usuario || {}); applyUser(); fillInstitutionSelects(); renderInstitutions(); return data; });
+  }
+  function renderInstitutions() {
+    var totalCredit = state.institutions.reduce(function (sum, item) { return sum + Number(item.credito_usd || 0); }, 0), totalCerts = state.institutions.reduce(function (sum, item) { return sum + Number(item.certs || 0); }, 0);
+    setText('st-inst-count', state.institutions.length); setText('st-inst-certs', totalCerts); setText('st-inst-gas', money(totalCredit));
+    var body = byId('inst-body');
+    if (body) body.innerHTML = state.institutions.map(function (item) { return '<tr><td><span class="nm">' + esc(item.nombre) + '</span><div class="ilabel">' + esc(item.etiqueta) + ' - ' + esc(item.responsable_nombre || 'Sin responsable') + '</div></td><td class="mono">' + esc(short(item.wallet)) + '</td><td class="mono" style="text-align:right">' + money(item.credito_usd) + '<div class="imeta">' + item.certs + ' certificados</div></td><td>' + statusTag(item.estado) + '</td><td style="text-align:right"><a class="link" data-open-inst="' + item.id + '">Ver</a> <a class="link" data-emit-inst="' + item.id + '">Emitir</a></td></tr>'; }).join('') || '<tr><td colspan="5" class="helper">Aun no hay instituciones registradas.</td></tr>';
+    var item = currentInstitution();
+    if (item) { setText('dt-name', item.nombre); setText('dt-label', item.etiqueta); setText('dt-user', item.responsable_nombre || '-'); setText('dt-email', item.responsable_correo || '-'); setText('dt-wallet', item.wallet || 'Sin wallet registrada'); setText('dt-gas', money(item.credito_usd)); setText('dt-certs', item.certs); setText('dt-deliv', item.delivered + ' / ' + item.certs); if (byId('dt-status')) byId('dt-status').innerHTML = statusTag(item.estado); }
+    loadAccessRequests();
+  }
+  function loadAccessRequests() {
+    if (role() !== 'admin') return Promise.resolve();
+    return api('/api/panel/solicitudes-acceso').then(function (data) {
+      var requests = data.solicitudes || []; setText('reqs-count', requests.length); setText('st-inst-alerts', requests.length); if (byId('reqs-card')) byId('reqs-card').hidden = !requests.length;
+      var body = byId('reqs-body'); if (body) body.innerHTML = requests.map(function (request) { return '<tr><td><span class="nm">' + esc(request.nombre) + '</span><div class="imeta">' + esc(request.correo) + '</div></td><td>' + esc(request.institucion_nombre) + '</td><td class="mono">' + esc(request.creado_en) + '</td><td style="text-align:right"><button class="btn" data-resolve-request="' + request.id + '" data-action="aprobar">Aprobar</button> <a class="link" data-resolve-request="' + request.id + '" data-action="rechazar">Rechazar</a></td></tr>'; }).join('');
+    }).catch(function () {});
   }
 
-  /* ---------------- login (conectado al API) ---------------- */
-  function initLogin() {
-    var btn    = document.getElementById("login-btn");
-    var errEl  = document.getElementById("login-error");
-    var errMsg = document.getElementById("login-error-msg");
-    if (!btn) return;
+  function loadStudents() { return api('/api/panel/estudiantes?institucionId=' + activeId()).then(function (data) { state.students = data.estudiantes || []; renderStudents(); }); }
+  function renderStudents() {
+    var body = byId('st-body'); if (!body) return;
+    body.innerHTML = state.students.map(function (student) { var valid = walletValid(student.wallet); return '<tr' + (valid ? '' : ' class="err"') + '><td class="nm">' + esc(student.nombre) + '</td><td>' + esc(student.correo || '-') + '</td><td class="mono">' + esc(short(student.wallet)) + '</td><td><span class="tag ' + (valid ? 'ok' : 'err') + '">' + (valid ? 'lista para emitir' : 'wallet pendiente') + '</span></td><td style="text-align:right"><a class="link" data-delete-student="' + student.id + '">Quitar</a></td></tr>'; }).join('') || '<tr><td colspan="5" class="helper">Agrega estudiantes para crear un lote.</td></tr>';
+    setText('st-ok', state.students.filter(function (student) { return walletValid(student.wallet); }).length); setText('st-bad', state.students.filter(function (student) { return !walletValid(student.wallet); }).length); setText('st-total', state.students.length); renderBatchCost();
+  }
+  function renderBatchCost() {
+    var count = state.students.filter(function (student) { return walletValid(student.wallet); }).length, total = count * 0.77, institution = currentInstitution();
+    setText('cost-count', count); setText('cost-unit', money(0.77)); setText('cost-total', money(total)); setText('cost-credit', money(institution?.credito_usd)); setText('cost-after', money(Number(institution?.credito_usd || 0) - total)); if (byId('req-send')) byId('req-send').disabled = !count || !state.template || Number(institution?.credito_usd || 0) < total;
+  }
+  function loadBatches() { return api('/api/panel/lotes').then(function (data) { state.batches = data.lotes || []; renderBatches(); }); }
+  function renderBatches() {
+    var mine = role() === 'admin' ? state.batches : state.batches.filter(function (batch) { return Number(batch.institucion_id) === activeId(); });
+    var mineBody = byId('bat-body'); if (mineBody) mineBody.innerHTML = mine.map(function (batch) { return '<tr><td class="mono">' + esc(batch.creado_en) + '</td><td class="nm">' + esc(batch.nombre) + '</td><td class="mono" style="text-align:right">' + batch.cantidad + '</td><td class="mono" style="text-align:right">' + money(batch.costo_usd) + '</td><td>' + esc(batch.plantilla_nombre || '-') + '</td><td>' + statusTag(batch.estado) + '</td></tr>'; }).join('');
+    var body = byId('sol-body'); if (body) body.innerHTML = state.batches.map(function (batch) { var pending = batch.estado === 'pendiente'; return '<tr><td><span class="nm">' + esc(batch.institucion_nombre) + '</span><div class="ilabel">' + esc(batch.institucion_etiqueta) + '</div></td><td class="nm">' + esc(batch.nombre) + '<div class="imeta">' + batch.cantidad + ' certificados</div></td><td class="mono">' + money(batch.costo_usd) + '</td><td>' + statusTag(batch.estado) + '</td><td style="text-align:right">' + (pending ? '<button class="btn" data-resolve-batch="' + batch.id + '" data-action="aprobar">Autorizar</button> <a class="link" data-resolve-batch="' + batch.id + '" data-action="rechazar">Rechazar</a>' : '') + '</td></tr>'; }).join(''); setText('sol-count', state.batches.filter(function (batch) { return batch.estado === 'pendiente'; }).length);
+  }
+  function renderViewerPanel() { var institution = currentInstitution(); setText('dash-credit', money(institution?.credito_usd)); setText('dash-credit2', money(institution?.credito_usd)); setText('dash-open', state.batches.filter(function (batch) { return batch.estado === 'pendiente'; }).length); }
+  function loadHistory() { return api('/api/certificados/historial').then(function (data) { var stats = data.stats || {}, emissions = data.emisiones || [], screen = document.querySelector('[data-screen-panel="dashboard"]'); setText('dash-certs', stats.totalEmitidos || 0); setText('dash-lotes', stats.totalLotes || 0); setText('dash-delivered', stats.entregados || 0); var statValues = screen ? screen.querySelectorAll('.stat .v') : []; if (statValues[0]) statValues[0].textContent = stats.totalEmitidos || 0; if (statValues[1]) statValues[1].textContent = stats.totalLotes || 0; if (statValues[2]) statValues[2].innerHTML = (stats.entregados || 0) + ' <small>/ ' + (stats.totalEmitidos || 0) + '</small>'; var body = screen && screen.querySelector('tbody'); if (body) body.innerHTML = emissions.slice(0, 15).map(function (item) { return '<tr><td class="mono">' + esc(item.creado_en) + '</td><td class="nm">' + esc(item.nombre_alumno) + '</td><td class="mono">' + esc(short(item.wallet_alumno)) + '</td><td class="mono">' + esc(item.token_id || '-') + '</td><td>' + statusTag(item.estado === 'nft_transferido' ? 'aprobada' : 'rechazada') + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="helper">Todavia no hay emisiones registradas.</td></tr>'; }).catch(function (error) { toast(error.message, true); }); }
 
-    function setError(msg) {
-      if (errEl)  errEl.style.display  = "";
-      if (errMsg) errMsg.textContent   = msg;
-    }
-    function clearError() {
-      if (errEl) errEl.style.display = "none";
-    }
+  function refreshWizard() {
+    var institution = currentInstitution(); if (!institution) return; fillInstitutionSelects(); setText('wz-inst-wallet', state.config?.universityWallet || institution.wallet || 'Sin wallet configurada'); setText('wz-inst-net', state.config?.network || 'Cargando red'); setText('wz-inst-gas', money(institution.credito_usd));
+    document.querySelectorAll('[data-inst-name]').forEach(function (node) { node.textContent = institution.nombre; }); document.querySelectorAll('[data-inst-label]').forEach(function (node) { node.textContent = institution.etiqueta; }); document.querySelectorAll('[data-inst-wallet]').forEach(function (node) { node.textContent = state.config?.universityWallet || institution.wallet || '-'; });
+  }
+  function showStep(step) { document.querySelectorAll('.wstep').forEach(function (node) { node.style.display = Number(node.getAttribute('data-wstep')) === step ? '' : 'none'; }); document.querySelectorAll('#stepper .step').forEach(function (node) { var number = Number(node.getAttribute('data-step')); node.classList.toggle('current', number === step); node.classList.toggle('done', number < step); }); }
+  function validateExcel() {
+    if (!state.excel) return Promise.reject(new Error('Selecciona el Excel de estudiantes.')); var form = new FormData(); form.append('excel', state.excel);
+    return fetch('/api/certificados/validar-excel', { method: 'POST', headers: headers(), body: form }).then(function (response) { return response.json().then(function (data) { if (!response.ok) throw new Error(data.message); return data; }); }).then(function (data) { state.rows = data.filas || []; renderValidation(); return data; });
+  }
+  function renderValidation() {
+    var step = document.querySelector('[data-wstep="2"]'), table = step && step.querySelector('tbody'); if (!table) return; table.innerHTML = state.rows.slice(0, 20).map(function (row) { return '<tr' + (row.valido ? '' : ' class="err"') + '><td class="mono">' + row.row + '</td><td class="nm">' + esc(row.studentName) + '</td><td class="mono">' + esc(short(row.studentWallet)) + '</td><td><span class="tag ' + (row.valido ? 'ok' : 'err') + '">' + (row.valido ? 'valida' : esc(row.error)) + '</span></td></tr>'; }).join(''); var valid = state.rows.filter(function (row) { return row.valido; }).length, summary = step.querySelector('.summary-pill'); if (summary) summary.innerHTML = '<span class="num-ok"><b>' + valid + '</b> validas</span><span class="div"></span><span class="num-err"><b>' + (state.rows.length - valid) + '</b> con error</span><span class="div"></span><span>' + state.rows.length + ' totales</span>';
+  }
+  function prepareCertificates() {
+    if (!state.template || !state.excel) return Promise.reject(new Error('Selecciona la plantilla PDF y el Excel.')); var form = new FormData(); form.append('plantilla', state.template); form.append('excel', state.excel); var loading = byId('gen-loading'), done = byId('gen-done'); if (loading) loading.style.display = ''; if (done) done.style.display = 'none';
+    return fetch('/api/certificados/masivo/preparar', { method: 'POST', headers: headers(), body: form }).then(function (response) { return response.json().then(function (data) { if (!response.ok) throw new Error(data.message); return data; }); }).then(function (data) { state.prepared = data.certificados || []; setText('gen-pct', '100%'); var bar = document.querySelector('#gen-progress i'); if (bar) bar.style.width = '100%'; if (loading) loading.style.display = 'none'; if (done) done.style.display = ''; refreshWizard(); return data; });
+  }
+  function startEmission() { if (!state.prepared.length) return toast('Primero genera los certificados.', true); api('/api/certificados/masivo/emitir', { method: 'POST', json: { certificados: state.prepared, institucionId: activeId() } }).then(function (data) { state.job = data.jobId; showScreen('progress'); pollJob(); }).catch(function (error) { toast(error.message, true); }); }
+  function pollJob() { if (!state.job) return; api('/api/certificados/masivo/emitir/' + state.job).then(function (data) { renderJob(data); if (data.status === 'procesando') setTimeout(pollJob, 2000); else byId('batch-go').disabled = false; }).catch(function (error) { toast(error.message, true); }); }
+  function renderJob(data) {
+    var details = data.details || [], complete = details.filter(function (item) { return ['confirmado', 'revisar_owner', 'error'].indexOf(item.stage) !== -1; }).length; setText('p1-counter', complete + ' de ' + details.length); var bar = document.querySelector('#p1-progress i'); if (bar) bar.style.width = (details.length ? complete / details.length * 100 : 0) + '%';
+    var heading = document.querySelector('#phase1 .phh b'), description = document.querySelector('#phase1 .sub'); if (heading) heading.textContent = 'Emision directa a las wallets de estudiantes'; if (description) description.textContent = 'Cada certificado se firma y se envia mediante el proceso real de blockchain configurado en el servidor.';
+    var body = document.querySelector('#mint-list tbody'); if (body) body.innerHTML = details.map(function (item, index) { var ok = item.stage === 'confirmado', failed = item.stage === 'error', label = failed ? 'error' : ok ? 'confirmado' : item.stage === 'estampando_qr' ? 'estampando QR' : item.stage; return '<tr' + (failed ? ' class="err"' : '') + '><td class="mono">' + (index + 1) + '</td><td class="nm">' + esc(item.studentName) + '</td><td class="mono">' + esc(item.tokenId || '-') + '</td><td><span class="tag ' + (failed ? 'err' : ok ? 'ok' : 'run') + '">' + esc(label) + '</span></td></tr>'; }).join(''); setText('p1-tag', data.status === 'completado' ? 'completado' : 'en proceso'); if (data.status === 'completado') { byId('phase1').classList.add('done'); byId('phase2').style.display = 'none'; byId('checkpoint').style.display = 'none'; } state.lastResult = data;
+  }
+  function renderResult() { var result = state.lastResult || { details: [] }, ok = result.details.filter(function (item) { return item.status === 'nft_transferido'; }).length, screen = document.querySelector('[data-screen-panel="result"]'); if (screen) { var summary = screen.querySelector('.summary-pill'); if (summary) summary.innerHTML = '<span><b>' + result.details.length + '</b> procesados</span><span class="div"></span><span class="num-ok"><b>' + ok + '</b> entregados</span><span class="div"></span><span class="num-err"><b>' + (result.details.length - ok) + '</b> con error</span>'; var body = screen.querySelector('tbody'); if (body) body.innerHTML = result.details.map(function (item) { return '<tr><td class="nm">' + esc(item.studentName) + '</td><td class="mono">' + esc(short(item.studentWallet)) + '</td><td class="mono">' + esc(item.tokenId || '-') + '</td><td><span class="tag ' + (item.status === 'nft_transferido' ? 'ok' : 'err') + '">' + esc(item.status || item.stage) + '</span></td><td>' + (item.explorerUrl ? '<a class="txlink" target="_blank" href="' + encodeURI(item.explorerUrl) + '">Ver transaccion</a>' : '-') + (item.finalPdfUrl ? ' · <a class="txlink" target="_blank" href="' + encodeURI(item.finalPdfUrl) + '">PDF con QR</a>' : item.qrError ? ' · <span class="tag warn">QR pendiente</span>' : '') + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="helper">Aun no hay una emision para mostrar.</td></tr>'; } }
+  function verify() {
+    var query = (byId('vf-input').value || '').trim(); if (!query) return toast('Ingresa el Token ID o el CID del certificado.', true);
+    api('/api/public/verificar?q=' + encodeURIComponent(query), { headers: {} }).then(function (data) {
+      var cert = data.certificado; byId('vf-idle').hidden = true; byId('vf-bad').hidden = true; byId('vf-ok').hidden = false;
+      setText('vf-student', cert.nombreAlumno || 'No registrado'); setText('vf-course', 'Certificado NFT'); setText('vf-inst', cert.institucion || 'Institucion emisora'); setText('vf-date', cert.fecha || '-'); setText('vf-token', '#' + cert.tokenId); setText('vf-owner', cert.owner); setText('vf-cid', cert.metadataCid || cert.tokenURI); setText('vf-contract', cert.contractAddress); setText('vf-net', cert.network); setText('vf-tx', short(cert.txHash));
+      setText('vf-note', cert.ownerCoincide === false ? 'El token existe en el contrato, pero hoy pertenece a otra wallet distinta a la del alumno.' : 'El token existe en el contrato y su tokenURI coincide con el registrado.');
+      var pdf = byId('vf-pdf'), pdfUrl = cert.finalPdfUrl || cert.pdfUrl; pdf.hidden = !pdfUrl; if (pdfUrl) pdf.href = pdfUrl; pdf.textContent = cert.finalPdfUrl ? '↓ PDF del certificado (con QR)' : '↓ PDF minteado (sin QR)';
+      var explorer = byId('vf-explorer'); explorer.hidden = !cert.explorerUrl; if (cert.explorerUrl) explorer.href = cert.explorerUrl;
+    }).catch(function (error) { byId('vf-idle').hidden = true; byId('vf-ok').hidden = true; byId('vf-bad').hidden = false; setText('vf-badmsg', error.message); });
+  }
+  // Vista del estudiante: certificados emitidos a la wallet de su cuenta.
+  function loadMyCerts() {
+    return api('/api/panel/mis-certificados').then(function (data) {
+      var certs = data.certificados || [], grid = byId('sc-grid');
+      byId('sw-addr').value = data.wallet || ''; setText('sc-count', certs.length); setText('sc-valid', certs.length); setText('sc-rev', 0);
+      byId('sc-empty').hidden = certs.length > 0;
+      grid.innerHTML = certs.map(function (cert) {
+        var pdf = cert.final_pdf_url || (cert.pdf_cid ? 'https://gateway.pinata.cloud/ipfs/' + cert.pdf_cid : '');
+        return '<div class="certcard"><div class="cc-seal"><span class="cc-ring">✓</span><span class="cc-tok mono">#CERT-' + esc(cert.token_id) + '</span></div><div class="cc-body"><span class="tag ok">vigente</span><h3>Certificado NFT · ' + esc(cert.nombre_alumno) + '</h3><p class="cc-inst">' + esc(cert.institucion_nombre || 'Institucion emisora') + '</p>'
+          + '<dl class="cc-meta"><dt>Token ID</dt><dd class="mono">' + esc(cert.token_id) + '</dd><dt>Fecha</dt><dd>' + esc(cert.creado_en || '-') + '</dd><dt>Transaccion</dt><dd class="mono">' + esc(short(cert.tx_hash)) + '</dd></dl>'
+          + '<div class="cc-foot">' + (pdf ? '<a class="btn" href="' + esc(pdf) + '" target="_blank" rel="noopener">PDF</a>' : '') + (cert.explorer_url ? '<a class="btn" href="' + esc(cert.explorer_url) + '" target="_blank" rel="noopener">Transaccion</a>' : '') + '<a class="btn btn--primary" href="?token=' + esc(cert.token_id) + '">Verificar</a></div></div></div>';
+      }).join('');
+    }).catch(function (error) { toast(error.message, true); });
+  }
+  function logout() {
+    localStorage.removeItem('certnft_token'); localStorage.removeItem('certnft_screen'); state.token = null; state.user = null; state.institutions = []; state.students = []; state.batches = [];
+    if (window.location.search) { window.location.href = window.location.pathname; return; }
+    byId('view-app').classList.remove('active'); byId('view-login').classList.add('active'); byId('li-pass').value = ''; applyUser();
+  }
+  function clearVerify() { byId('vf-input').value = ''; byId('vf-ok').hidden = true; byId('vf-bad').hidden = true; byId('vf-idle').hidden = false; byId('vf-input').focus(); }
+  // El QR del PDF final apunta a "<sitio>/?token=<tokenId>": al abrirlo se
+  // muestra la verificacion publica ya resuelta, sin iniciar sesion.
+  function verifyFromUrl() {
+    var params = new URLSearchParams(window.location.search), query = params.get('token') || params.get('cid'); if (!query) return false;
+    showScreen('verify'); byId('vf-input').value = query; verify(); return true;
+  }
 
-    ["li-user", "li-pass"].forEach(function (id) {
-      var input = document.getElementById(id);
-      if (input) input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") btn.click();
-      });
+  function bindFiles() {
+    var templateInput = document.createElement('input'), excelInput = document.createElement('input'); templateInput.type = 'file'; templateInput.accept = 'application/pdf'; templateInput.hidden = true; excelInput.type = 'file'; excelInput.accept = '.xlsx,.xls'; excelInput.hidden = true; document.body.append(templateInput, excelInput);
+    templateInput.addEventListener('change', function () { state.template = templateInput.files[0] || null; if (state.template) toast('Plantilla seleccionada: ' + state.template.name); renderBatchCost(); }); excelInput.addEventListener('change', function () { state.excel = excelInput.files[0] || null; if (state.excel) validateExcel().then(function () { toast('Lista validada.'); }).catch(function (error) { toast(error.message, true); }); });
+    document.querySelector('[data-wstep="1"] .filechip')?.addEventListener('click', function () { templateInput.click(); }); document.querySelector('[data-wstep="2"] .filechip')?.addEventListener('click', function () { excelInput.click(); });
+  }
+  function bindEvents() {
+    document.addEventListener('click', function (event) {
+      var node = event.target.closest('button,a'); if (!node) return;
+      if (node.hasAttribute('data-auth-tab')) { document.querySelectorAll('[data-auth]').forEach(function (panel) { panel.hidden = panel.getAttribute('data-auth') !== node.getAttribute('data-auth-tab'); }); document.querySelectorAll('[data-auth-tab]').forEach(function (tab) { tab.classList.toggle('on', tab === node); }); return; }
+      if (node.id === 'login-btn') { api('/api/login', { method: 'POST', json: { correo: byId('li-user').value.trim(), contrasena: byId('li-pass').value } }).then(function (data) { state.token = data.token; state.user = data.usuario; localStorage.setItem('certnft_token', state.token); localStorage.removeItem('certnft_screen'); return loadPanel(); }).then(function () { return api('/api/certificados/config'); }).then(function (config) { state.config = config; showScreen(homeScreen()); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.id === 'reg-btn') { api('/api/register', { method: 'POST', json: { nombre: byId('rg-name').value.trim(), correo: byId('rg-mail').value.trim(), contrasena: byId('rg-pass').value, institucionId: Number(byId('rg-inst').value) } }).then(function (data) { toast(data.mensaje); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.id === 'public-verify') { showScreen('verify'); return; }
+      if (node.id === 'logout-btn') { logout(); return; }
+      if (node.id === 'sw-save') { api('/api/panel/mi-wallet', { method: 'PUT', json: { wallet: byId('sw-addr').value.trim() } }).then(function (data) { state.user.wallet = data.wallet; toast('Wallet guardada.'); return loadMyCerts(); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.id === 'sw-copy') { navigator.clipboard?.writeText(byId('sw-addr').value).then(function () { toast('Direccion copiada.'); }); return; }
+      if (node.hasAttribute('data-screen') || node.hasAttribute('data-goto')) { showScreen(node.getAttribute('data-screen') || node.getAttribute('data-goto')); return; }
+      if (node.id === 'inst-new-btn') { byId('inst-form').hidden = false; return; }
+      if (node.id === 'inst-form-cancel' || node.id === 'inst-form-cancel2') { byId('inst-form').hidden = true; return; }
+      if (node.id === 'inst-save') { api('/api/panel/instituciones', { method: 'POST', json: { nombre: byId('nf-name').value, etiqueta: byId('nf-label').value, responsableNombre: byId('nf-user').value, responsableCorreo: byId('nf-mail').value, wallet: byId('nf-wallet').value } }).then(function () { byId('inst-form').hidden = true; return loadPanel(); }).then(function () { toast('Institucion creada.'); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.hasAttribute('data-open-inst')) { state.activeInstitution = Number(node.getAttribute('data-open-inst')); showScreen('inst'); return; }
+      if (node.hasAttribute('data-emit-inst')) { state.activeInstitution = Number(node.getAttribute('data-emit-inst')); showScreen('wizard'); return; }
+      if (node.hasAttribute('data-resolve-request')) { api('/api/panel/solicitudes-acceso/' + node.getAttribute('data-resolve-request') + '/resolver', { method: 'POST', json: { accion: node.getAttribute('data-action') } }).then(loadPanel).then(function () { toast('Solicitud actualizada.'); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.id === 'st-add') { api('/api/panel/estudiantes', { method: 'POST', json: { institucionId: activeId(), nombre: byId('st-name').value, correo: byId('st-mail').value, wallet: byId('st-wallet').value } }).then(loadStudents).then(function () { byId('st-name').value = ''; byId('st-mail').value = ''; byId('st-wallet').value = ''; toast('Estudiante guardado.'); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.hasAttribute('data-delete-student')) { api('/api/panel/estudiantes/' + node.getAttribute('data-delete-student'), { method: 'DELETE' }).then(loadStudents).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.id === 'req-send') { var valid = state.students.filter(function (student) { return walletValid(student.wallet); }).length; api('/api/panel/lotes', { method: 'POST', json: { institucionId: activeId(), nombre: byId('req-lote').value || 'Lote ' + new Date().toLocaleDateString(), plantillaNombre: state.template?.name, cantidad: valid } }).then(loadBatches).then(function () { toast('Lote enviado al administrador.'); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.hasAttribute('data-resolve-batch')) { api('/api/panel/lotes/' + node.getAttribute('data-resolve-batch') + '/resolver', { method: 'POST', json: { accion: node.getAttribute('data-action') } }).then(function () { return Promise.all([loadBatches(), loadPanel()]); }).then(function () { toast('Lote actualizado.'); }).catch(function (error) { toast(error.message, true); }); return; }
+      if (node.id === 'vf-go') { verify(); return; }
+      if (node.id === 'vf-clear' || node.id === 'vf-clear2') { clearVerify(); return; }
+      if (node.hasAttribute('data-wnext')) { var next = Number(node.getAttribute('data-wnext')); if (next === 2 && !state.template) return toast('Selecciona una plantilla PDF.', true); if (next === 3) { prepareCertificates().then(function () { showStep(3); }).catch(function (error) { toast(error.message, true); }); return; } showStep(next); return; }
+      if (node.hasAttribute('data-wprev')) { showStep(Number(node.getAttribute('data-wprev'))); return; }
+      if (node.id === 'emit-btn') { startEmission(); return; }
+      if (node.id === 'batch-go') { renderResult(); showScreen('result'); return; }
     });
-
-    btn.addEventListener("click", function () {
-      clearError();
-      var correo     = (document.getElementById("li-user").value || "").trim();
-      var contrasena = document.getElementById("li-pass").value || "";
-
-      if (!correo || !contrasena) {
-        setError("Ingresa tu correo y contraseña.");
-        return;
-      }
-
-      btn.disabled    = true;
-      btn.textContent = "Iniciando sesión…";
-
-      fetch("/api/login", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ correo: correo, contrasena: contrasena }),
-      })
-        .then(function (res) {
-          return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-        })
-        .then(function (r) {
-          if (!r.ok) {
-            setError(r.data.error || "Error de autenticación.");
-            return;
-          }
-          localStorage.setItem(LS_TOKEN, r.data.token);
-          if (r.data.usuario) setUserInfo(r.data.usuario.nombre);
-          showScreen("dashboard");
-          ensureConfigLoaded(function () {});
-        })
-        .catch(function () {
-          setError("No se pudo conectar con el servidor.");
-        })
-        .finally(function () {
-          btn.disabled    = false;
-          btn.textContent = "Iniciar sesión";
-        });
-    });
+    document.addEventListener('change', function (event) { if (event.target.id === 'wz-inst') { state.activeInstitution = Number(event.target.value); refreshWizard(); } if (event.target.id === 'conf-check') byId('emit-btn').disabled = !event.target.checked; }); byId('vf-input')?.addEventListener('keydown', function (event) { if (event.key === 'Enter') verify(); });
   }
-
-  /* ---------------- registro de usuario ---------------- */
-  function initRegister() {
-    var btn    = document.getElementById("reg-btn");
-    var errEl  = document.getElementById("reg-error");
-    var errMsg = document.getElementById("reg-error-msg");
-    if (!btn) return;
-
-    function setError(msg) {
-      if (errEl)  errEl.style.display  = "";
-      if (errMsg) errMsg.textContent   = msg;
-    }
-    function clearError() {
-      if (errEl) errEl.style.display = "none";
-    }
-
-    var goReg   = document.getElementById("go-register");
-    var goLogin = document.getElementById("go-login-from-reg");
-    if (goReg)   goReg.addEventListener("click",   function (e) { e.preventDefault(); clearError(); showPanel("register"); });
-    if (goLogin) goLogin.addEventListener("click", function (e) { e.preventDefault(); clearError(); showPanel("login"); });
-
-    ["reg-name", "reg-user", "reg-pass"].forEach(function (id) {
-      var input = document.getElementById(id);
-      if (input) input.addEventListener("keydown", function (e) { if (e.key === "Enter") btn.click(); });
-    });
-
-    btn.addEventListener("click", function () {
-      clearError();
-      var nombre     = (document.getElementById("reg-name").value || "").trim();
-      var correo     = (document.getElementById("reg-user").value || "").trim();
-      var contrasena = document.getElementById("reg-pass").value || "";
-
-      if (!nombre || !correo || !contrasena) {
-        setError("Todos los campos son requeridos."); return;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-        setError("El correo no tiene un formato válido."); return;
-      }
-      if (contrasena.length < 8) {
-        setError("La contraseña debe tener al menos 8 caracteres."); return;
-      }
-
-      btn.disabled    = true;
-      btn.textContent = "Creando cuenta…";
-
-      fetch("/api/register", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ nombre: nombre, correo: correo, contrasena: contrasena }),
-      })
-        .then(function (res) {
-          return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-        })
-        .then(function (r) {
-          if (!r.ok) { setError(r.data.error || "Error al crear la cuenta."); return; }
-          document.getElementById("reg-name").value = "";
-          document.getElementById("reg-user").value = "";
-          document.getElementById("reg-pass").value = "";
-          showPanel("login");
-          var suc    = document.getElementById("login-success");
-          var sucMsg = document.getElementById("login-success-msg");
-          if (suc) {
-            if (sucMsg) sucMsg.textContent = "Cuenta creada. Ya puedes iniciar sesión.";
-            suc.style.display = "";
-            setTimeout(function () { suc.style.display = "none"; }, 5000);
-          }
-        })
-        .catch(function () { setError("No se pudo conectar con el servidor."); })
-        .finally(function () { btn.disabled = false; btn.textContent = "Crear cuenta"; });
-    });
+  function boot() {
+    bindFiles(); bindEvents(); showStep(1); api('/api/public/instituciones', { headers: {} }).then(function (data) { state.institutions = data.instituciones || []; fillInstitutionSelects(); }).catch(function () {});
+    var fromUrl = verifyFromUrl();
+    if (!state.token) return; api('/api/me').then(function (data) { state.user = data.usuario; return loadPanel(); }).then(function () { return api('/api/certificados/config'); }).then(function (config) { state.config = config; showScreen(fromUrl ? 'verify' : localStorage.getItem('certnft_screen') || homeScreen()); }).catch(function () { localStorage.removeItem('certnft_token'); state.token = null; });
   }
-
-  /* ---------------- recuperar contraseña ---------------- */
-  function initForgot() {
-    var btn    = document.getElementById("forgot-btn");
-    var banner = document.getElementById("forgot-banner");
-    var banMsg = document.getElementById("forgot-banner-msg");
-    if (!btn) return;
-
-    function setBanner(msg, isErr) {
-      if (banner) {
-        banner.className     = "banner " + (isErr ? "err" : "info");
-        banner.style.display = "";
-        var ico = document.getElementById("forgot-banner-icon");
-        if (ico) ico.textContent = isErr ? "!" : "✓";
-      }
-      if (banMsg) banMsg.textContent = msg;
-    }
-    function clearBanner() { if (banner) banner.style.display = "none"; }
-
-    var goForgot = document.getElementById("go-forgot");
-    var goLogin  = document.getElementById("go-login-from-forgot");
-    if (goForgot) goForgot.addEventListener("click", function (e) { e.preventDefault(); clearBanner(); showPanel("forgot"); });
-    if (goLogin)  goLogin.addEventListener("click",  function (e) { e.preventDefault(); clearBanner(); showPanel("login"); });
-
-    var fInput = document.getElementById("forgot-user");
-    if (fInput) fInput.addEventListener("keydown", function (e) { if (e.key === "Enter") btn.click(); });
-
-    btn.addEventListener("click", function () {
-      clearBanner();
-      var correo = (document.getElementById("forgot-user").value || "").trim();
-      if (!correo) { setBanner("Ingresa tu correo.", true); return; }
-
-      btn.disabled    = true;
-      btn.textContent = "Enviando…";
-
-      fetch("/api/forgot-password", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ correo: correo }),
-      })
-        .then(function (res) {
-          return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-        })
-        .then(function (r) {
-          setBanner(r.data.mensaje || "Revisa la consola del servidor.", !r.ok);
-        })
-        .catch(function () { setBanner("No se pudo conectar con el servidor.", true); })
-        .finally(function () { btn.disabled = false; btn.textContent = "Enviar instrucciones"; });
-    });
-  }
-
-  /* ---------------- restablecer contraseña ---------------- */
-  function initReset() {
-    var btn    = document.getElementById("reset-btn");
-    var errEl  = document.getElementById("reset-error");
-    var errMsg = document.getElementById("reset-error-msg");
-    if (!btn) return;
-
-    function setError(msg) {
-      if (errEl)  errEl.style.display  = "";
-      if (errMsg) errMsg.textContent   = msg;
-    }
-    function clearError() { if (errEl) errEl.style.display = "none"; }
-
-    var goLogin = document.getElementById("go-login-from-reset");
-    if (goLogin) goLogin.addEventListener("click", function (e) {
-      e.preventDefault();
-      clearError();
-      window.history.replaceState({}, "", "/");
-      showPanel("login");
-    });
-
-    var rInput = document.getElementById("reset-pass");
-    if (rInput) rInput.addEventListener("keydown", function (e) { if (e.key === "Enter") btn.click(); });
-
-    btn.addEventListener("click", function () {
-      clearError();
-      var params     = new URLSearchParams(window.location.search);
-      var token      = params.get("reset");
-      var contrasena = document.getElementById("reset-pass").value || "";
-
-      if (!token) {
-        setError("Token no encontrado. Usa el enlace del servidor."); return;
-      }
-      if (contrasena.length < 8) {
-        setError("La contraseña debe tener al menos 8 caracteres."); return;
-      }
-
-      btn.disabled    = true;
-      btn.textContent = "Guardando…";
-
-      fetch("/api/reset-password", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ token: token, contrasena: contrasena }),
-      })
-        .then(function (res) {
-          return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-        })
-        .then(function (r) {
-          if (!r.ok) { setError(r.data.error || "Error al restablecer la contraseña."); return; }
-          window.history.replaceState({}, "", "/");
-          showPanel("login");
-          var suc    = document.getElementById("login-success");
-          var sucMsg = document.getElementById("login-success-msg");
-          if (suc) {
-            if (sucMsg) sucMsg.textContent = "Contraseña actualizada. Ya puedes iniciar sesión.";
-            suc.style.display = "";
-            setTimeout(function () { suc.style.display = "none"; }, 5000);
-          }
-        })
-        .catch(function () { setError("No se pudo conectar con el servidor."); })
-        .finally(function () { btn.disabled = false; btn.textContent = "Guardar nueva contraseña"; });
-    });
-  }
-
-  /* ---------------- cerrar sesión ---------------- */
-  function initLogout() {
-    var btn = document.getElementById("logout-btn");
-    if (!btn) return;
-    btn.addEventListener("click", function () {
-      localStorage.removeItem(LS_TOKEN);
-      appView.classList.remove("active");
-      loginView.classList.add("active");
-      showPanel("login");
-      var liUser = document.getElementById("li-user");
-      var liPass = document.getElementById("li-pass");
-      if (liUser) liUser.value = "";
-      if (liPass) liPass.value = "";
-    });
-  }
-
-  /* ---------------- acceso restringido (visitante público desde /registro) ---------------- */
-  function initRestricted() {
-    var goRegistro = document.getElementById("restricted-go-registro");
-    if (goRegistro) goRegistro.addEventListener("click", function () {
-      window.location.href = "/registro/";
-    });
-
-    var goLogin = document.getElementById("go-login-from-restricted");
-    if (goLogin) goLogin.addEventListener("click", function (e) {
-      e.preventDefault();
-      showPanel("login");
-    });
-  }
-
-  /* ---------------- sesión persistente (check al cargar) ---------------- */
-  function checkSession() {
-    var params     = new URLSearchParams(window.location.search);
-    var resetToken = params.get("reset");
-    if (resetToken) {
-      showPanel("reset");
-      return;
-    }
-
-    var token = localStorage.getItem(LS_TOKEN);
-    if (!token) {
-      // Si el visitante llega justo desde /registro (ej. con el botón "atrás"
-      // del navegador), es alguien del público general, no un administrador:
-      // le mostramos una pantalla de acceso restringido en vez del login
-      // institucional, que no tiene sentido para su recorrido.
-      if (document.referrer && document.referrer.indexOf("/registro") !== -1) {
-        showPanel("restricted");
-      }
-      return;
-    }
-
-    fetch("/api/me", {
-      headers: { "Authorization": "Bearer " + token },
-    })
-      .then(function (res) {
-        return res.json().then(function (data) { return { ok: res.ok, data: data }; });
-      })
-      .then(function (r) {
-        if (!r.ok) { localStorage.removeItem(LS_TOKEN); return; }
-        setUserInfo(r.data.usuario.nombre);
-        var saved = localStorage.getItem(LS_SCREEN) || "dashboard";
-        showScreen(saved);
-        ensureConfigLoaded(function () {});
-      })
-      .catch(function () { localStorage.removeItem(LS_TOKEN); });
-  }
-
-  /* ---------------- wizard: estado + helpers ---------------- */
-  var wizardState = {
-    plantillaFile: null,
-    excelFile:     null,
-    certificados:  [],   // resultado de /masivo/preparar
-    config:        null, // resultado de /config
-    emitResult:    null, // resultado de /masivo/emitir
-  };
-
-  // Devuelve un objeto de headers con el "Authorization: Bearer <token>" listo para usar en fetch().
-  function authHeaders(extra) {
-    var token   = localStorage.getItem(LS_TOKEN);
-    var headers = extra || {};
-    if (token) headers["Authorization"] = "Bearer " + token;
-    return headers;
-  }
-
-  // Convierte un tamaño en bytes a texto legible (ej. "248 KB").
-  function formatBytes(bytes) {
-    if (!bytes && bytes !== 0) return "";
-    var units = ["B", "KB", "MB", "GB"];
-    var i = 0, n = bytes;
-    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-    return n.toFixed(n < 10 && i > 0 ? 1 : 0) + " " + units[i];
-  }
-
-  // Trae y cachea la config real (wallet, red, contrato, saldo) desde GET /api/certificados/config.
-  function ensureConfigLoaded(cb) {
-    if (wizardState.config) { cb(); return; }
-    fetch("/api/certificados/config", { headers: authHeaders() })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (data.success) { wizardState.config = data; applyNetworkInfo(); }
-        cb();
-      })
-      .catch(function () { cb(); });
-  }
-
-  // Refleja la red/wallet/contrato reales en el topbar y en Configuración (rojo si es mainnet).
-  function applyNetworkInfo() {
-    var cfg = wizardState.config;
-    if (!cfg) return;
-
-    var pillName = document.getElementById("topbar-net-name");
-    var pill     = document.getElementById("topbar-net-pill");
-    if (pillName) pillName.textContent = cfg.network + (cfg.isMainnet ? " · gas real" : "");
-    if (pill) pill.classList.toggle("net-pill--danger", !!cfg.isMainnet);
-
-    var addr = document.getElementById("config-wallet-addr");
-    if (addr) addr.textContent = cfg.universityWallet;
-    var net = document.getElementById("config-network");
-    if (net) net.textContent = cfg.network;
-    var contractAddr = document.getElementById("config-contract-addr");
-    if (contractAddr) contractAddr.textContent = cfg.contractAddress;
-    var balance = document.getElementById("config-balance");
-    if (balance) {
-      var eth = parseFloat(cfg.balanceEth);
-      balance.textContent = (isNaN(eth) ? cfg.balanceEth : eth.toFixed(5)) + " ETH";
-    }
-    var configPill = document.getElementById("config-net-pill");
-    if (configPill) configPill.classList.toggle("net-pill--danger", !!cfg.isMainnet);
-  }
-
-  /* ---------------- wizard ---------------- */
-  var curStep = 1;
-  // Paso 3 dispara la generación real; paso 4 carga el resumen con datos reales.
-  function setWizardStep(n) {
-    curStep = n;
-    document.querySelectorAll(".wstep").forEach(function (w) {
-      var active = +w.getAttribute("data-wstep") === n;
-      w.classList.toggle("active", active);
-      w.style.display = active ? "" : "none";
-    });
-    document.querySelectorAll("#stepper .step").forEach(function (s) {
-      var sn = +s.getAttribute("data-step");
-      s.classList.toggle("current", sn === n);
-      s.classList.toggle("done",    sn < n);
-    });
-    if (n === 3) runGeneration();
-    if (n === 4) {
-      var cb   = document.getElementById("conf-check");
-      var emit = document.getElementById("emit-btn");
-      if (cb)   cb.checked   = false;
-      if (emit) emit.disabled = true;
-      ensureConfigLoaded(populateResumen);
-    }
-    window.scrollTo(0, 0);
-  }
-
-  // Limpia archivos, certificados generados y resultado antes de una nueva emisión.
-  function resetWizard() {
-    progressStarted = false;
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    wizardState.plantillaFile = null;
-    wizardState.excelFile     = null;
-    wizardState.certificados  = [];
-    wizardState.emitResult    = null;
-
-    var plantillaFn = document.getElementById("plantilla-fn");
-    if (plantillaFn) plantillaFn.textContent = "Ningún archivo seleccionado";
-    var plantillaFmeta = document.getElementById("plantilla-fmeta");
-    if (plantillaFmeta) plantillaFmeta.textContent = "Sube el PDF de la plantilla";
-    var plantillaPick = document.getElementById("plantilla-pick");
-    if (plantillaPick) plantillaPick.textContent = "Subir";
-    var step1Next = document.getElementById("wizard-step1-next");
-    if (step1Next) step1Next.disabled = true;
-    var plantillaInput = document.getElementById("plantilla-input");
-    if (plantillaInput) plantillaInput.value = "";
-
-    var excelFn = document.getElementById("excel-fn");
-    if (excelFn) excelFn.textContent = "Ningún archivo seleccionado";
-    var excelPick = document.getElementById("excel-pick");
-    if (excelPick) excelPick.textContent = "Subir Excel";
-    var excelEmpty = document.getElementById("excel-empty");
-    if (excelEmpty) {
-      excelEmpty.textContent   = "Sube un archivo Excel para validar la lista de estudiantes.";
-      excelEmpty.style.display = "";
-    }
-    var excelResults = document.getElementById("excel-results");
-    if (excelResults) excelResults.style.display = "none";
-    var step2Next = document.getElementById("wizard-step2-next");
-    if (step2Next) { step2Next.disabled = true; step2Next.textContent = "Continuar"; }
-    var excelInput = document.getElementById("excel-input");
-    if (excelInput) excelInput.value = "";
-
-    setWizardStep(1);
-  }
-
-  /* ---------------- wizard paso 1: plantilla PDF ---------------- */
-  // Valida que el archivo subido sea un PDF real y lo guarda en wizardState.
-  function initWizardStep1() {
-    var input   = document.getElementById("plantilla-input");
-    var pick    = document.getElementById("plantilla-pick");
-    var fn      = document.getElementById("plantilla-fn");
-    var fmeta   = document.getElementById("plantilla-fmeta");
-    var nextBtn = document.getElementById("wizard-step1-next");
-    if (!input) return;
-
-    pick.addEventListener("click", function () { input.click(); });
-
-    input.addEventListener("change", function () {
-      var file = input.files[0];
-      if (!file) return;
-      if (file.type !== "application/pdf") {
-        toast("Selecciona un archivo PDF válido", true);
-        input.value = "";
-        return;
-      }
-      wizardState.plantillaFile = file;
-      fn.textContent    = file.name;
-      fmeta.textContent = formatBytes(file.size);
-      pick.textContent  = "Reemplazar";
-      nextBtn.disabled  = false;
-    });
-  }
-
-  /* ---------------- wizard paso 2: lista de estudiantes (Excel) ---------------- */
-  // Dibuja la tabla de validación del Excel: una fila por alumno, marcando
-  // en verde las válidas y en rojo las que tienen error.
-  function renderExcelTable(filas) {
-    var tbody = document.getElementById("excel-table-body");
-    tbody.innerHTML = "";
-    filas.forEach(function (f) {
-      var tr = document.createElement("tr");
-      if (!f.valido) tr.className = "err";
-      var walletTxt = f.studentWallet || "— vacío —";
-      tr.innerHTML =
-        '<td class="mono">' + f.row + "</td>" +
-        '<td class="nm">' + (f.studentName || "—") + "</td>" +
-        '<td class="mono">' + walletTxt + "</td>" +
-        "<td>" + (f.valido ? '<span class="tag ok">válida</span>' : '<span class="tag err">' + f.error + "</span>") + "</td>";
-      tbody.appendChild(tr);
-    });
-  }
-
-  // Sube el Excel a POST /api/certificados/validar-excel y pinta el resultado real.
-  function initWizardStep2() {
-    var input   = document.getElementById("excel-input");
-    var pick    = document.getElementById("excel-pick");
-    var fn      = document.getElementById("excel-fn");
-    var empty   = document.getElementById("excel-empty");
-    var results = document.getElementById("excel-results");
-    var nextBtn = document.getElementById("wizard-step2-next");
-    if (!input) return;
-
-    pick.addEventListener("click", function () { input.click(); });
-
-    input.addEventListener("change", function () {
-      var file = input.files[0];
-      if (!file) return;
-
-      wizardState.excelFile = file;
-      fn.textContent   = file.name;
-      pick.textContent = "Analizando…";
-      nextBtn.disabled = true;
-
-      var formData = new FormData();
-      formData.append("excel", file);
-
-      fetch("/api/certificados/validar-excel", {
-        method:  "POST",
-        headers: authHeaders(),
-        body:    formData,
-      })
-        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-        .then(function (r) {
-          pick.textContent = "Reemplazar";
-          if (!r.ok) {
-            toast(r.data.message || "No se pudo leer el Excel", true);
-            empty.textContent   = r.data.message || "No se pudo leer el Excel.";
-            empty.style.display = "";
-            results.style.display = "none";
-            return;
-          }
-          document.getElementById("excel-valid-count").textContent = r.data.validCount;
-          document.getElementById("excel-error-count").textContent = r.data.totalCount - r.data.validCount;
-          document.getElementById("excel-total-count").textContent = r.data.totalCount;
-          renderExcelTable(r.data.filas);
-          empty.style.display   = "none";
-          results.style.display = "";
-          nextBtn.textContent = "Continuar con las " + r.data.validCount + " válidas";
-          nextBtn.disabled    = r.data.validCount === 0;
-        })
-        .catch(function () {
-          pick.textContent = "Reemplazar";
-          toast("No se pudo conectar con el servidor", true);
-        });
-    });
-  }
-
-  /* ---------------- wizard paso 3: generación real (plantilla + IPFS) ---------------- */
-  // Pinta la lista de certificados ya generados y muestra la previsualización real del primero.
-  function renderGenResults(certificados) {
-    document.getElementById("gen-count").textContent = certificados.length;
-    var tbody = document.getElementById("gen-list-body");
-    tbody.innerHTML = "";
-    certificados.forEach(function (c) {
-      var tr = document.createElement("tr");
-      tr.innerHTML = '<td class="nm">' + c.studentName + '</td><td style="text-align:right;"><span class="tag ok">subido</span></td>';
-      tbody.appendChild(tr);
-    });
-    if (certificados[0]) {
-      document.getElementById("gen-preview-name").textContent = certificados[0].studentName;
-      var box = document.getElementById("gen-preview-box");
-      box.innerHTML = '<img src="' + certificados[0].previewGatewayUrl + '" alt="Previsualización" style="max-width:100%;max-height:100%;border-radius:8px;" />';
-    }
-  }
-
-  // Genera de verdad los PDFs vía POST /api/certificados/masivo/preparar (sube a Pinata).
-  function runGeneration() {
-    var loading = document.getElementById("gen-loading");
-    var done    = document.getElementById("gen-done");
-    var errBox  = document.getElementById("gen-error");
-    var bar     = document.querySelector("#gen-progress > i");
-    var pct     = document.getElementById("gen-pct");
-    if (!loading || !done) return;
-
-    if (!wizardState.plantillaFile || !wizardState.excelFile) {
-      toast("Faltan archivos de los pasos anteriores", true);
-      setWizardStep(1);
-      return;
-    }
-
-    loading.style.display = "";
-    done.style.display    = "none";
-    errBox.style.display  = "none";
-
-    var p = 0;
-    bar.style.width = "0%"; pct.textContent = "0%";
-    var fakeTimer = setInterval(function () {
-      p = Math.min(p + Math.random() * 6 + 2, 90);
-      bar.style.width = p + "%";
-      pct.textContent = Math.round(p) + "%";
-    }, 400);
-
-    var formData = new FormData();
-    formData.append("plantilla", wizardState.plantillaFile);
-    formData.append("excel", wizardState.excelFile);
-
-    fetch("/api/certificados/masivo/preparar", {
-      method:  "POST",
-      headers: authHeaders(),
-      body:    formData,
-    })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-      .then(function (r) {
-        clearInterval(fakeTimer);
-        bar.style.width = "100%"; pct.textContent = "100%";
-        if (!r.ok) {
-          loading.style.display = "none";
-          errBox.style.display  = "";
-          document.getElementById("gen-error-msg").textContent = r.data.message || "Ocurrió un error generando los certificados.";
-          return;
-        }
-        wizardState.certificados = r.data.certificados;
-        renderGenResults(r.data.certificados);
-        setTimeout(function () { loading.style.display = "none"; done.style.display = ""; }, 300);
-      })
-      .catch(function () {
-        clearInterval(fakeTimer);
-        loading.style.display = "none";
-        errBox.style.display  = "";
-        document.getElementById("gen-error-msg").textContent = "No se pudo conectar con el servidor.";
-      });
-  }
-
-  document.addEventListener("click", function (e) {
-    if (e.target && e.target.id === "gen-retry-btn") runGeneration();
-  });
-
-  /* ---------------- wizard paso 4: resumen ---------------- */
-  // Rellena el resumen previo al minteo con datos reales y la advertencia de "gas real" si es mainnet.
-  function populateResumen() {
-    document.getElementById("resumen-total").textContent       = wizardState.certificados.length;
-    document.getElementById("resumen-count-check").textContent = wizardState.certificados.length;
-    if (wizardState.config) {
-      document.getElementById("resumen-red").textContent    = wizardState.config.network;
-      document.getElementById("resumen-wallet").textContent = wizardState.config.universityWallet;
-      var warning = document.getElementById("resumen-mainnet-warning");
-      if (warning) warning.style.display = wizardState.config.isMainnet ? "" : "none";
-    }
-  }
-
-  // Checkbox confirmación (paso 4)
-  document.addEventListener("change", function (e) {
-    if (e.target && e.target.id === "conf-check") {
-      var emit = document.getElementById("emit-btn");
-      if (emit) emit.disabled = !e.target.checked;
-    }
-  });
-
-  /* ---------------- progreso: minteo real, con estado por alumno ---------------- */
-  var progressStarted = false;
-  var pollTimer = null;
-
-  // Traduce el "stage" real que manda el backend a la clase CSS y texto de la fila.
-  function stageLabel(stage) {
-    switch (stage) {
-      case "enviando":      return { cls: "run", txt: "enviando…" };
-      case "confirmando":   return { cls: "run", txt: "hash generado, confirmando…" };
-      case "confirmado":    return { cls: "ok",  txt: "en wallet ✓" };
-      case "revisar_owner": return { cls: "err", txt: "revisar owner" };
-      case "error":         return { cls: "err", txt: "error de minteo" };
-      default:              return { cls: "wait", txt: "en cola" };
-    }
-  }
-
-  // Emite de verdad: POST /masivo/emitir da un jobId, y hace polling a GET /masivo/emitir/:jobId cada 2s.
-  function startProgress() {
-    if (progressStarted) return;
-
-    var certificados = wizardState.certificados;
-    if (!certificados || certificados.length === 0) {
-      toast("No hay certificados preparados. Empieza una nueva emisión.", true);
-      resetWizard();
-      showScreen("wizard");
-      return;
-    }
-    progressStarted = true;
-
-    var tbody      = document.getElementById("mint-list-body");
-    var p1bar      = document.querySelector("#p1-progress > i");
-    var p1counter  = document.getElementById("p1-counter");
-    var p1tag      = document.getElementById("p1-tag");
-    var statusText = document.getElementById("p1-status-text");
-    var goBtn      = document.getElementById("batch-go");
-
-    tbody.innerHTML = "";
-    certificados.forEach(function (c, idx) {
-      var tr = document.createElement("tr");
-      tr.innerHTML =
-        '<td class="mono">' + (idx + 1) + "</td>" +
-        '<td class="nm">' + c.studentName + "</td>" +
-        '<td class="mono">' + c.studentWallet + "</td>" +
-        '<td><span class="mstate tag wait">en cola</span></td>';
-      tbody.appendChild(tr);
-    });
-    p1counter.textContent = "0 de " + certificados.length;
-
-    // Actualiza cada fila con el stage más reciente del polling y recalcula el progreso.
-    function renderFromDetails(details) {
-      var rows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
-      var doneCount = 0;
-
-      details.forEach(function (det, idx) {
-        var row = rows[idx];
-        if (!row) return;
-        var st = row.querySelector(".mstate");
-        var label = stageLabel(det.stage);
-        st.className   = "mstate tag " + label.cls;
-        st.textContent = label.txt;
-        st.title       = det.explorerUrl || det.error || "";
-        row.classList.toggle("err", det.stage === "error" || det.stage === "revisar_owner");
-
-        if (det.stage === "confirmado" || det.stage === "error" || det.stage === "revisar_owner") {
-          doneCount++;
-        }
-      });
-
-      p1counter.textContent = doneCount + " de " + details.length;
-      p1bar.style.width = Math.round((doneCount / details.length) * 100) + "%";
-    }
-
-    fetch("/api/certificados/masivo/emitir", {
-      method:  "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body:    JSON.stringify({ certificados: certificados }),
-    })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-      .then(function (r) {
-        if (!r.ok) {
-          p1tag.className    = "ph-tag tag err";
-          p1tag.textContent  = "error";
-          statusText.textContent = r.data.message || "Ocurrió un error emitiendo los certificados.";
-          toast(r.data.message || "Error en la emisión", true);
-          return;
-        }
-
-        var jobId = r.data.jobId;
-        statusText.textContent = "Enviando transacciones…";
-
-        pollTimer = setInterval(function () {
-          fetch("/api/certificados/masivo/emitir/" + jobId, { headers: authHeaders() })
-            .then(function (res) { return res.json(); })
-            .then(function (data) {
-              if (!data.success) return;
-
-              renderFromDetails(data.details);
-
-              if (data.status === "completado" || data.status === "error") {
-                clearInterval(pollTimer);
-                pollTimer = null;
-
-                var okCount = data.details.filter(function (d) { return d.status === "nft_transferido"; }).length;
-                wizardState.emitResult = { totalCertificates: data.total, details: data.details };
-
-                p1tag.className   = "ph-tag tag " + (okCount === data.total ? "ok" : "warn");
-                p1tag.textContent = okCount === data.total ? "completado" : "con incidencias";
-                statusText.textContent = "Emisión completada";
-                document.getElementById("p1-desc").textContent =
-                  "Se ejecutó una transacción createCertificate por cada alumno (el contrato no tiene minteo por lotes), directo a su wallet.";
-
-                dashboardLoaded = false; // el próximo Dashboard debe traer estos certificados nuevos
-                goBtn.disabled = false;
-                document.getElementById("batch-lock").style.display = "none";
-              }
-            })
-            .catch(function () {
-              // fallo puntual consultando el estado: se reintenta en el próximo tick
-            });
-        }, 2000);
-      })
-      .catch(function () {
-        p1tag.className   = "ph-tag tag err";
-        p1tag.textContent = "error";
-        statusText.textContent = "No se pudo conectar con el servidor.";
-        toast("No se pudo conectar con el servidor", true);
-      });
-  }
-
-  /* ---------------- resultado final ---------------- */
-  // Pinta el resultado final real: tokenId, estado y link a Etherscan por alumno.
-  function renderResultScreen() {
-    var data = wizardState.emitResult;
-    if (!data) return;
-
-    document.getElementById("result-total").textContent = data.totalCertificates;
-    var okCount = data.details.filter(function (d) { return d.status === "nft_transferido"; }).length;
-    document.getElementById("result-ok").textContent  = okCount;
-    document.getElementById("result-err").textContent = data.totalCertificates - okCount;
-
-    var tbody = document.getElementById("result-table-body");
-    tbody.innerHTML = "";
-    data.details.forEach(function (d) {
-      var tr = document.createElement("tr");
-      if (d.status !== "nft_transferido") tr.className = "err";
-      var estadoTag = d.status === "nft_transferido"
-        ? '<span class="tag ok">entregado</span>'
-        : d.status === "error_minteo"
-        ? '<span class="tag err" title="' + (d.error || "") + '">error de minteo</span>'
-        : '<span class="tag err">revisar owner</span>';
-      var txLink = d.explorerUrl
-        ? '<a class="txlink" href="' + d.explorerUrl + '" target="_blank" rel="noopener">' + d.txHash.slice(0, 10) + "… ↗</a>"
-        : "—";
-      tr.innerHTML =
-        '<td class="nm">' + d.studentName + "</td>" +
-        '<td class="mono">' + d.studentWallet + "</td>" +
-        '<td class="mono">' + (d.tokenId !== undefined ? d.tokenId : "—") + "</td>" +
-        "<td>" + estadoTag + "</td>" +
-        "<td>" + txLink + "</td>";
-      tbody.appendChild(tr);
-    });
-  }
-
-  /* ---------------- dashboard: historial real ---------------- */
-  var dashboardLoaded = false;
-  // Trae el historial real desde GET /api/certificados/historial y pinta el Dashboard.
-  function loadDashboard() {
-    if (dashboardLoaded) return;
-    dashboardLoaded = true;
-
-    fetch("/api/certificados/historial", { headers: authHeaders() })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data.success) { dashboardLoaded = false; return; }
-
-        document.getElementById("dash-total").textContent      = data.stats.totalEmitidos;
-        document.getElementById("dash-lotes").textContent      = data.stats.totalLotes;
-        document.getElementById("dash-entregados").firstChild.textContent = data.stats.entregados + " ";
-        document.getElementById("dash-entregados-total").textContent     = "/ " + data.stats.totalEmitidos;
-
-        var empty = document.getElementById("dash-empty");
-        var card  = document.getElementById("dash-table-card");
-
-        if (data.emisiones.length === 0) {
-          empty.style.display = "";
-          card.style.display  = "none";
-          return;
-        }
-        empty.style.display = "none";
-        card.style.display  = "";
-
-        var tbody = document.getElementById("dash-table-body");
-        tbody.innerHTML = "";
-        data.emisiones.forEach(function (e) {
-          var tr = document.createElement("tr");
-          var esOk = e.estado === "nft_transferido";
-          if (!esOk) tr.className = "err";
-          var estadoTag = esOk
-            ? '<span class="tag ok">entregado</span>'
-            : '<span class="tag err" title="' + (e.error || "") + '">' + (e.estado === "error_minteo" ? "error de minteo" : "revisar owner") + "</span>";
-          var fecha = (e.creado_en || "").replace("T", " ").slice(0, 16);
-          var txLink = e.tx_hash
-            ? '<a class="txlink" href="' + e.explorer_url + '" target="_blank" rel="noopener">' + e.tx_hash.slice(0, 10) + "… ↗</a>"
-            : "—";
-          tr.innerHTML =
-            '<td class="mono">' + fecha + "</td>" +
-            '<td class="nm">' + e.nombre_alumno + "</td>" +
-            '<td class="mono">' + e.wallet_alumno + "</td>" +
-            "<td>" + estadoTag + "</td>" +
-            "<td>" + txLink + "</td>";
-          tbody.appendChild(tr);
-        });
-      })
-      .catch(function () { dashboardLoaded = false; });
-  }
-
-  /* ---------------- modal Participantes (CRUD) ---------------- */
-  var participantesState = { items: [], editingId: null, selectedIds: {}, filterEvento: "todos" };
-
-  // Devuelve solo los participantes que coinciden con el filtro de evento
-  // activo ("Mostrar: Todos/Foro/ASOBAN") — es sobre esta lista filtrada que
-  // operan la tabla, "seleccionar todos" y, por lo tanto, la exportación.
-  function getParticipantesFiltrados() {
-    var items = participantesState.items;
-    if (participantesState.filterEvento === "todos") return items;
-    return items.filter(function (p) { return p.evento === participantesState.filterEvento; });
-  }
-
-  // Sincroniza la casilla "seleccionar todos" del encabezado: marcada si
-  // todos los participantes visibles (según el filtro) están seleccionados,
-  // sin marcar si ninguno lo está, e "indeterminada" (raya) si hay una
-  // selección parcial.
-  function updateSelectAllCheckbox() {
-    var selectAll = document.getElementById("participantes-select-all");
-    if (!selectAll) return;
-    var items = getParticipantesFiltrados();
-    var selectedCount = items.filter(function (p) { return participantesState.selectedIds[p.id]; }).length;
-    selectAll.checked = items.length > 0 && selectedCount === items.length;
-    selectAll.indeterminate = selectedCount > 0 && selectedCount < items.length;
-  }
-
-  // Escapa texto antes de insertarlo como HTML en las celdas de la tabla.
-  function escapeHtml(str) {
-    return String(str == null ? "" : str).replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
-
-  function openParticipantesModal() {
-    document.getElementById("participantes-overlay").classList.add("show");
-    loadParticipantes();
-  }
-  function closeParticipantesModal() {
-    document.getElementById("participantes-overlay").classList.remove("show");
-    participantesState.editingId = null;
-  }
-
-  // Trae la lista real desde GET /api/certificados/participantes y la pinta.
-  function loadParticipantes() {
-    fetch("/api/certificados/participantes", { headers: authHeaders() })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data.success) { toast(data.message || "No se pudo cargar participantes", true); return; }
-        participantesState.items = data.participantes;
-        // Descarta selecciones de participantes que ya no existen (eliminados, etc.).
-        var vigentes = {};
-        data.participantes.forEach(function (p) {
-          if (participantesState.selectedIds[p.id]) vigentes[p.id] = true;
-        });
-        participantesState.selectedIds = vigentes;
-        renderParticipantesTable();
-      })
-      .catch(function () { toast("Error de conexión al cargar participantes", true); });
-  }
-
-  // Dibuja la tabla (respetando el filtro de evento activo); las filas en
-  // edición muestran inputs en vez de texto.
-  function renderParticipantesTable() {
-    var tbody = document.getElementById("participantes-table-body");
-    var empty = document.getElementById("participantes-empty");
-    var items = getParticipantesFiltrados();
-
-    if (!items.length) {
-      tbody.innerHTML = "";
-      empty.style.display = "";
-      empty.textContent = participantesState.items.length
-        ? "Ningún participante coincide con el filtro seleccionado."
-        : "Todavía no hay participantes registrados.";
-      updateSelectAllCheckbox();
-      return;
-    }
-    empty.style.display = "none";
-
-    tbody.innerHTML = items.map(function (p) {
-      var fecha = (p.creado_en || "").replace(" ", "T").slice(0, 16).replace("T", " ");
-      var tipoTag = p.tipo === "creada"
-        ? '<span class="tag ok">creada</span>'
-        : (p.tipo === "manual" ? '<span class="tag wait">manual</span>' : '<span class="tag run">existente</span>');
-      var eventoTag = p.evento === "asoban"
-        ? '<span class="tag wait">ASOBAN</span>'
-        : '<span class="tag run">Foro</span>';
-
-      var ICON_SAVE   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg>';
-      var ICON_CANCEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>';
-      var ICON_EDIT   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-      var ICON_DELETE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
-
-      var checked = participantesState.selectedIds[p.id] ? " checked" : "";
-      var checkboxCell = '<td><input type="checkbox" data-select-id="' + p.id + '"' + checked + ' /></td>';
-
-      if (participantesState.editingId === p.id) {
-        return (
-          '<tr>' +
-            checkboxCell +
-            '<td><input class="input" style="height:34px;padding:0 10px;" id="edit-nombre-' + p.id + '" value="' + escapeHtml(p.nombre) + '" /></td>' +
-            '<td><input class="input mono" style="height:34px;padding:0 10px;" id="edit-wallet-' + p.id + '" value="' + escapeHtml(p.wallet) + '" /></td>' +
-            '<td>' + tipoTag + '</td>' +
-            '<td>' +
-              '<select class="input" style="height:34px;padding:0 8px;" id="edit-evento-' + p.id + '">' +
-                '<option value="foro"' + (p.evento === "asoban" ? "" : " selected") + '>Foro</option>' +
-                '<option value="asoban"' + (p.evento === "asoban" ? " selected" : "") + '>ASOBAN</option>' +
-              '</select>' +
-            '</td>' +
-            '<td class="mono" style="font-size:11.5px;color:var(--muted);">' + fecha + '</td>' +
-            '<td style="white-space:nowrap;">' +
-              '<button class="icon-btn ok" data-save-id="' + p.id + '" type="button" title="Guardar">' + ICON_SAVE + '</button>' +
-              '<button class="icon-btn" data-cancel-id="' + p.id + '" type="button" title="Cancelar">' + ICON_CANCEL + '</button>' +
-            '</td>' +
-          '</tr>'
-        );
-      }
-
-      return (
-        '<tr>' +
-          checkboxCell +
-          '<td class="nm">' + escapeHtml(p.nombre) + '</td>' +
-          '<td class="mono">' + escapeHtml(p.wallet) + '</td>' +
-          '<td>' + tipoTag + '</td>' +
-          '<td>' + eventoTag + '</td>' +
-          '<td class="mono" style="font-size:11.5px;color:var(--muted);">' + fecha + '</td>' +
-          '<td style="white-space:nowrap;">' +
-            '<button class="icon-btn edit" data-edit-id="' + p.id + '" type="button" title="Editar">' + ICON_EDIT + '</button>' +
-            '<button class="icon-btn danger" data-delete-id="' + p.id + '" type="button" title="Eliminar">' + ICON_DELETE + '</button>' +
-          '</td>' +
-        '</tr>'
-      );
-    }).join("");
-
-    updateSelectAllCheckbox();
-  }
-
-  // POST /api/certificados/participantes — alta manual desde el formulario del modal.
-  function addParticipante() {
-    var nombreInput = document.getElementById("part-add-nombre");
-    var walletInput = document.getElementById("part-add-wallet");
-    var eventoInput = document.getElementById("part-add-evento");
-    var nombre = nombreInput.value.trim();
-    var wallet = walletInput.value.trim();
-    var evento = eventoInput ? eventoInput.value : "foro";
-    if (!nombre || !wallet) { toast("Completa nombre y wallet", true); return; }
-
-    fetch("/api/certificados/participantes", {
-      method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ nombre: nombre, wallet: wallet, evento: evento }),
-    })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-      .then(function (r) {
-        if (!r.ok || !r.data.success) { toast((r.data && r.data.message) || "No se pudo agregar", true); return; }
-        nombreInput.value = "";
-        walletInput.value = "";
-        toast("Participante agregado");
-        loadParticipantes();
-      })
-      .catch(function () { toast("Error de conexión", true); });
-  }
-
-  // PATCH /api/certificados/participantes/:id — guarda los cambios de la fila en edición.
-  function saveParticipante(id) {
-    var nombreInput = document.getElementById("edit-nombre-" + id);
-    var walletInput = document.getElementById("edit-wallet-" + id);
-    var eventoInput = document.getElementById("edit-evento-" + id);
-    var nombre = nombreInput.value.trim();
-    var wallet = walletInput.value.trim();
-    var evento = eventoInput ? eventoInput.value : undefined;
-    if (!nombre || !wallet) { toast("Completa nombre y wallet", true); return; }
-
-    fetch("/api/certificados/participantes/" + id, {
-      method: "PATCH",
-      headers: authHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ nombre: nombre, wallet: wallet, evento: evento }),
-    })
-      .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, data: data }; }); })
-      .then(function (r) {
-        if (!r.ok || !r.data.success) { toast((r.data && r.data.message) || "No se pudo guardar", true); return; }
-        participantesState.editingId = null;
-        toast("Cambios guardados");
-        loadParticipantes();
-      })
-      .catch(function () { toast("Error de conexión", true); });
-  }
-
-  // DELETE /api/certificados/participantes/:id — elimina la fila tras confirmar.
-  function deleteParticipante(id) {
-    if (!confirm("¿Eliminar este participante? Esta acción no se puede deshacer.")) return;
-
-    fetch("/api/certificados/participantes/" + id, { method: "DELETE", headers: authHeaders() })
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        if (!data.success) { toast(data.message || "No se pudo eliminar", true); return; }
-        toast("Participante eliminado");
-        loadParticipantes();
-      })
-      .catch(function () { toast("Error de conexión", true); });
-  }
-
-  // GET /api/certificados/participantes/exportar — descarga el Excel autenticando la petición
-  // manualmente (un <a href> normal no podría mandar el header Authorization).
-  // Solo exporta los participantes marcados con su casilla; si no hay ninguno
-  // marcado, avisa y no descarga nada.
-  function exportParticipantes() {
-    var ids = Object.keys(participantesState.selectedIds).filter(function (id) {
-      return participantesState.selectedIds[id];
-    });
-    if (!ids.length) { toast("Selecciona al menos un participante para exportar", true); return; }
-
-    fetch("/api/certificados/participantes/exportar?ids=" + ids.join(","), { headers: authHeaders() })
-      .then(function (res) {
-        if (!res.ok) throw new Error("No se pudo exportar");
-        return res.blob();
-      })
-      .then(function (blob) {
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = "participantes.xlsx";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-      })
-      .catch(function () { toast("No se pudo exportar el Excel", true); });
-  }
-
-  function initParticipantesModal() {
-    var navBtn = document.getElementById("nav-participantes");
-    if (navBtn) navBtn.addEventListener("click", openParticipantesModal);
-
-    var closeBtn = document.getElementById("participantes-close");
-    if (closeBtn) closeBtn.addEventListener("click", closeParticipantesModal);
-
-    var overlay = document.getElementById("participantes-overlay");
-    if (overlay) overlay.addEventListener("click", function (e) {
-      if (e.target === overlay) closeParticipantesModal();
-    });
-
-    var addBtn = document.getElementById("part-add-btn");
-    if (addBtn) addBtn.addEventListener("click", addParticipante);
-
-    var exportBtn = document.getElementById("participantes-export-btn");
-    if (exportBtn) exportBtn.addEventListener("click", exportParticipantes);
-
-    var selectAll = document.getElementById("participantes-select-all");
-    if (selectAll) selectAll.addEventListener("change", function () {
-      // Solo afecta a los participantes actualmente visibles según el filtro
-      // de evento — no borra selecciones hechas en otro filtro.
-      getParticipantesFiltrados().forEach(function (p) {
-        if (selectAll.checked) participantesState.selectedIds[p.id] = true;
-        else delete participantesState.selectedIds[p.id];
-      });
-      renderParticipantesTable();
-    });
-
-    var filterEvento = document.getElementById("participantes-filter-evento");
-    if (filterEvento) filterEvento.addEventListener("change", function () {
-      participantesState.filterEvento = filterEvento.value;
-      renderParticipantesTable();
-    });
-
-    var tbody = document.getElementById("participantes-table-body");
-    if (tbody) tbody.addEventListener("change", function (e) {
-      var el = e.target.closest("[data-select-id]");
-      if (!el) return;
-      var id = el.getAttribute("data-select-id");
-      if (el.checked) participantesState.selectedIds[id] = true;
-      else delete participantesState.selectedIds[id];
-      updateSelectAllCheckbox();
-    });
-
-    if (tbody) tbody.addEventListener("click", function (e) {
-      var el = e.target.closest("[data-edit-id],[data-cancel-id],[data-save-id],[data-delete-id]");
-      if (!el) return;
-      if (el.hasAttribute("data-edit-id"))   { participantesState.editingId = +el.getAttribute("data-edit-id"); renderParticipantesTable(); }
-      if (el.hasAttribute("data-cancel-id")) { participantesState.editingId = null; renderParticipantesTable(); }
-      if (el.hasAttribute("data-save-id"))   saveParticipante(+el.getAttribute("data-save-id"));
-      if (el.hasAttribute("data-delete-id")) deleteParticipante(+el.getAttribute("data-delete-id"));
-    });
-  }
-
-  /* ---------------- logo uploader ---------------- */
-  function initLogoUploader() {
-    var btn       = document.getElementById("logo-upload-btn");
-    var input     = document.getElementById("logo-input");
-    var removeBtn = document.getElementById("logo-remove-btn");
-    var preview   = document.getElementById("logo-preview");
-    if (!btn || !input) return;
-
-    btn.addEventListener("click", function () { input.click(); });
-    if (preview) preview.addEventListener("click", function () { input.click(); });
-
-    function handleFile(file) {
-      if (!file || !/^image\//.test(file.type)) { toast("Sube un archivo de imagen válido", true); return; }
-      if (file.size > 1024 * 1024)              { toast("El archivo supera 1 MB", true);           return; }
-      var reader = new FileReader();
-      reader.onload = function (ev) {
-        try { localStorage.setItem(LS_LOGO, ev.target.result); }
-        catch (err) { toast("La imagen es demasiado pesada", true); return; }
-        applyBranding();
-        toast("Logo actualizado");
-      };
-      reader.readAsDataURL(file);
-    }
-
-    input.addEventListener("change", function () { handleFile(input.files[0]); input.value = ""; });
-
-    if (removeBtn) removeBtn.addEventListener("click", function () {
-      localStorage.removeItem(LS_LOGO);
-      applyBranding();
-      toast("Logo eliminado");
-    });
-
-    if (preview) {
-      ["dragenter", "dragover"].forEach(function (ev) {
-        preview.addEventListener(ev, function (e) { e.preventDefault(); preview.style.borderColor = "var(--accent)"; });
-      });
-      ["dragleave", "drop"].forEach(function (ev) {
-        preview.addEventListener(ev, function (e) { e.preventDefault(); preview.style.borderColor = ""; });
-      });
-      preview.addEventListener("drop", function (e) {
-        if (e.dataTransfer && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
-      });
-    }
-
-    var nameInput = document.getElementById("cfg-instname");
-    if (nameInput) nameInput.addEventListener("input", function () {
-      var v = nameInput.value.trim();
-      if (v) localStorage.setItem(LS_NAME, v); else localStorage.removeItem(LS_NAME);
-      applyBranding();
-    });
-  }
-
-  /* ---------------- toast ---------------- */
-  var toastTimer = null;
-  function toast(msg, isErr) {
-    var t = document.getElementById("toast");
-    var m = document.getElementById("toast-msg");
-    if (!t) return;
-    m.textContent = msg;
-    t.querySelector(".tk").textContent = isErr ? "!" : "✓";
-    t.querySelector(".tk").style.color = isErr ? "#ff9b8a" : "#6ee7a8";
-    t.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { t.classList.remove("show"); }, 2200);
-  }
-
-  /* ---------------- delegación de clics (pantalla de app) ---------------- */
-  document.addEventListener("click", function (e) {
-    var el = e.target.closest("[data-goto],[data-wnext],[data-wprev],[data-screen],[data-copy],[data-toast]");
-    if (!el) return;
-
-    if (el.hasAttribute("data-copy")) {
-      var txt = el.getAttribute("data-copy");
-      if (navigator.clipboard) navigator.clipboard.writeText(txt);
-      toast("Dirección copiada");
-      return;
-    }
-
-    if (el.hasAttribute("data-reset-wizard")) resetWizard();
-
-    if (el.hasAttribute("data-wnext")) { setWizardStep(+el.getAttribute("data-wnext")); return; }
-    if (el.hasAttribute("data-wprev")) { setWizardStep(+el.getAttribute("data-wprev")); return; }
-
-    if (el.hasAttribute("data-screen")) {
-      showScreen(el.getAttribute("data-screen"));
-      if (el.hasAttribute("data-reset-wizard")) resetWizard();
-      return;
-    }
-
-    if (el.hasAttribute("data-toast")) toast(el.getAttribute("data-toast"));
-
-    if (el.hasAttribute("data-goto")) {
-      var dest = el.getAttribute("data-goto");
-      if (dest === "wizard" && el.hasAttribute("data-reset-wizard")) resetWizard();
-      showScreen(dest);
-    }
-  });
-
-  /* ---------------- init ---------------- */
-  applyBranding();
-  initLogin();
-  initRegister();
-  initForgot();
-  initReset();
-  initRestricted();
-  initLogout();
-  initLogoUploader();
-  initWizardStep1();
-  initWizardStep2();
-  initParticipantesModal();
-  setWizardStep(1);
-  checkSession();
-
+  boot();
 })();

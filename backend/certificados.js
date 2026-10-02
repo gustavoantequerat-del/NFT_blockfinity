@@ -3,10 +3,11 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const xlsx = require('xlsx');
+const axios = require('axios');
 
 const db = require('./db');
 const blockchain = require('./blockchain');
-const { generarCertificadoDesdeTemplate } = require('./pdfTemplate');
+const { generarCertificadoDesdeTemplate, estamparQrDeVerificacion } = require('./pdfTemplate');
 
 const router = express.Router();
 
@@ -25,11 +26,16 @@ function guardarEmision({
   estado,
   error,
   creadoPor,
+  institucionId,
+  pdfCid,
+  finalPdfCid,
+  finalPdfUrl,
+  qrPayload,
 }) {
   db.prepare(
     `INSERT INTO emisiones
-      (lote_id, nombre_alumno, wallet_alumno, token_id, tx_hash, explorer_url, token_uri, estado, error, creado_por)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      (lote_id, nombre_alumno, wallet_alumno, token_id, tx_hash, explorer_url, token_uri, estado, error, creado_por, institucion_id, pdf_cid, final_pdf_cid, final_pdf_url, qr_payload)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     loteId,
     nombreAlumno,
@@ -40,7 +46,12 @@ function guardarEmision({
     tokenURI ?? null,
     estado,
     error ?? null,
-    creadoPor ?? null
+    creadoPor ?? null,
+    institucionId ?? null,
+    pdfCid ?? null,
+    finalPdfCid ?? null,
+    finalPdfUrl ?? null,
+    qrPayload ?? null
   );
 }
 
@@ -49,6 +60,17 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
+
+// Copia local del PDF SIN QR de cada certificado preparado, guardada con su
+// CID como nombre. Tras mintear se usa para estamparle el QR sin tener que
+// bajarlo de IPFS; si no está (ej. el servidor se reinició) se descarga del
+// gateway por su CID, que garantiza que es exactamente el mismo archivo.
+const pdfBaseDir = path.join(uploadsDir, 'pdf-base');
+if (!fs.existsSync(pdfBaseDir)) {
+  fs.mkdirSync(pdfBaseDir);
+}
+
+const IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/';
 
 // Configuración de Multer: cada archivo subido se guarda con un nombre único
 // (timestamp + número aleatorio) para no chocar con otros archivos.
@@ -60,9 +82,10 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Genera el PDF del certificado (plantilla + nombre), sube ese PDF + su
-// preview PNG + su metadata JSON a Pinata, y devuelve el tokenURI listo
-// para mintear. Borra sus archivos temporales al terminar, con éxito o no.
+// PASO 1 DEL FLUJO — Genera el PDF del certificado (plantilla + nombre) SIN
+// QR, sube ese PDF + su preview PNG + su metadata JSON a Pinata, y devuelve
+// el tokenURI listo para mintear. El QR todavía no puede existir porque
+// apunta al tokenId, que solo se conoce después del mint.
 async function generarYSubirCertificado(nombreAlumno, templateBytes) {
   const pdfBytes = await generarCertificadoDesdeTemplate(templateBytes, nombreAlumno);
   const pdfPath = path.join(
@@ -78,11 +101,12 @@ async function generarYSubirCertificado(nombreAlumno, templateBytes) {
 
     const pdfCID = await blockchain.uploadFileToIPFS(pdfPath);
     const pdfIpfsUrl = `ipfs://${pdfCID}`;
-    const pdfGatewayUrl = `https://gateway.pinata.cloud/ipfs/${pdfCID}`;
+    const pdfGatewayUrl = `${IPFS_GATEWAY}${pdfCID}`;
+    fs.copyFileSync(pdfPath, path.join(pdfBaseDir, `${pdfCID}.pdf`));
 
     const previewCID = await blockchain.uploadFileToIPFS(previewPath);
     const previewIpfsUrl = `ipfs://${previewCID}`;
-    const previewGatewayUrl = `https://gateway.pinata.cloud/ipfs/${previewCID}`;
+    const previewGatewayUrl = `${IPFS_GATEWAY}${previewCID}`;
 
     const metadata = {
       name: `Certificado ${nombreAlumno}`,
@@ -117,9 +141,62 @@ async function generarYSubirCertificado(nombreAlumno, templateBytes) {
   }
 }
 
+// Base pública de la página de verificación. Se calcula con el request
+// original porque el minteo masivo corre en segundo plano, sin request.
+function baseVerificacion(req) {
+  return process.env.PUBLIC_VERIFY_URL?.trim() || `${req.protocol}://${req.get('host')}/`;
+}
+
+// Contenido del QR: la página pública de verificación con el tokenId del
+// NFT. Quien lo escanee ve el certificado consultado directo en el contrato.
+function urlVerificacion(base, tokenId) {
+  const url = new URL(base);
+  url.searchParams.set('token', String(tokenId));
+  return url.toString();
+}
+
+// Devuelve los bytes del PDF sin QR identificado por su CID: primero de la
+// copia local, si no existe lo descarga de IPFS.
+async function obtenerPdfBase(pdfCID) {
+  const localPath = path.join(pdfBaseDir, `${pdfCID}.pdf`);
+  if (fs.existsSync(localPath)) return fs.readFileSync(localPath);
+
+  const response = await axios.get(`${IPFS_GATEWAY}${pdfCID}`, {
+    responseType: 'arraybuffer',
+    timeout: 30000,
+  });
+  return Buffer.from(response.data);
+}
+
+// PASO 3 DEL FLUJO — Con el tokenId ya conocido, estampa el QR de
+// verificación sobre el PDF minteado y sube ese PDF final a IPFS. Ese es el
+// PDF que se entrega al alumno.
+async function estamparQrYSubirPdfFinal(pdfCID, tokenId, base) {
+  const qrPayload = urlVerificacion(base, tokenId);
+  const pdfBase = await obtenerPdfBase(pdfCID);
+  const finalBytes = await estamparQrDeVerificacion(pdfBase, qrPayload);
+  const finalPath = path.join(uploadsDir, `cert-final-${tokenId}-${Date.now()}.pdf`);
+
+  fs.writeFileSync(finalPath, finalBytes);
+  try {
+    const finalPdfCid = await blockchain.uploadFileToIPFS(finalPath);
+    const localPath = path.join(pdfBaseDir, `${pdfCID}.pdf`);
+    if (fs.existsSync(localPath)) fs.unlinkSync(localPath);
+
+    return {
+      qrPayload,
+      finalPdfCid,
+      finalPdfIpfsUrl: `ipfs://${finalPdfCid}`,
+      finalPdfUrl: `${IPFS_GATEWAY}${finalPdfCid}`,
+    };
+  } finally {
+    if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath);
+  }
+}
+
 // POST /api/certificados/individual — recibe plantilla + nombre + wallet de
-// UN alumno, genera su certificado, lo mintea directo a su wallet y guarda
-// el resultado en el historial.
+// UN alumno y ejecuta el flujo completo: PDF sin QR a IPFS -> mint directo a
+// su wallet -> QR con el tokenId estampado -> PDF final a IPFS -> historial.
 router.post('/individual', upload.single('plantilla'), async (req, res) => {
   const templateFile = req.file;
 
@@ -147,7 +224,7 @@ router.post('/individual', upload.single('plantilla'), async (req, res) => {
 
     const templateBytes = fs.readFileSync(templateFile.path);
 
-    console.log('📝 Generando PDF desde plantilla para:', nombreAlumno);
+    console.log('📝 Generando PDF (sin QR) desde plantilla para:', nombreAlumno);
     const cert = await generarYSubirCertificado(nombreAlumno, templateBytes);
 
     console.log('⛓️ Minteando NFT directo a la wallet del alumno...');
@@ -159,6 +236,18 @@ router.post('/individual', upload.single('plantilla'), async (req, res) => {
 
     console.log('✅ NFT creado correctamente. Owner:', finalOwner);
 
+    // Si el estampado falla el NFT ya existe: se registra igual y el QR se
+    // puede reintentar con POST /api/certificados/qr/:tokenId.
+    let final = {};
+    let errorQr = null;
+    try {
+      console.log(`🔳 Estampando QR con tokenId ${mintResult.tokenId}...`);
+      final = await estamparQrYSubirPdfFinal(cert.pdfCID, mintResult.tokenId, baseVerificacion(req));
+    } catch (qrError) {
+      errorQr = `QR pendiente: ${qrError.message}`;
+      console.error('⚠️', errorQr);
+    }
+
     guardarEmision({
       loteId: `individual-${Date.now()}`,
       nombreAlumno,
@@ -168,7 +257,13 @@ router.post('/individual', upload.single('plantilla'), async (req, res) => {
       explorerUrl: `${blockchain.explorerBaseUrl}${mintResult.receipt.transactionHash}`,
       tokenURI: cert.tokenURI,
       estado: entregado ? 'nft_transferido' : 'revisar_owner',
+      error: errorQr,
       creadoPor: req.user?.id,
+      institucionId: Number(req.body?.institucionId) || null,
+      pdfCid: cert.pdfCID,
+      finalPdfCid: final.finalPdfCid,
+      finalPdfUrl: final.finalPdfUrl,
+      qrPayload: final.qrPayload,
     });
 
     return res.status(200).json({
@@ -176,6 +271,8 @@ router.post('/individual', upload.single('plantilla'), async (req, res) => {
       message: 'NFT creado correctamente en la wallet del estudiante',
       tokenId: mintResult.tokenId,
       ...cert,
+      ...final,
+      qrError: errorQr,
       universityWallet: blockchain.universityWallet,
       studentWallet: walletAlumno,
       owner: finalOwner,
@@ -192,6 +289,7 @@ router.post('/individual', upload.single('plantilla'), async (req, res) => {
       estado: 'error_minteo',
       error: error.message,
       creadoPor: req.user?.id,
+      institucionId: Number(req.body?.institucionId) || null,
     });
     return res.status(500).json({
       success: false,
@@ -233,12 +331,6 @@ function leerFilasExcel(excelPath) {
   });
 }
 
-// Nombre legible de cada red soportada, para mostrar en la interfaz.
-const NETWORK_NAMES = {
-  1: 'Ethereum Mainnet',
-  11155111: 'Sepolia · testnet',
-};
-
 // GET /api/certificados/config — datos de la wallet universidad, el
 // contrato, la red y el saldo actual de gas, para el resumen del wizard.
 router.get('/config', async (req, res) => {
@@ -252,7 +344,7 @@ router.get('/config', async (req, res) => {
       contractAddress: blockchain.contractAddress,
       explorerBaseUrl: blockchain.explorerBaseUrl,
       isMainnet: blockchain.expectedChainId === 1,
-      network: NETWORK_NAMES[blockchain.expectedChainId] || `Chain ID ${blockchain.expectedChainId}`,
+      network: blockchain.networkName,
       balanceEth,
     });
   } catch (error) {
@@ -389,6 +481,7 @@ function programarLimpiezaJob(jobId) {
 // una por una, en segundo plano (ver el bloque async debajo).
 router.post('/masivo/emitir', (req, res) => {
   const creadoPor = req.user?.id;
+  const institucionId = Number(req.body?.institucionId) || null;
   const certificados = Array.isArray(req.body?.certificados) ? req.body.certificados : [];
 
   if (certificados.length === 0) {
@@ -402,14 +495,15 @@ router.post('/masivo/emitir', (req, res) => {
         message: `Wallet inválida para ${c.studentName || 'un alumno'}.`,
       });
     }
-    if (!c.tokenURI) {
+    if (!c.tokenURI || !c.pdfCID) {
       return res.status(400).json({
         success: false,
-        message: `Falta el tokenURI de ${c.studentName || 'un alumno'}. Vuelve a generar los certificados.`,
+        message: `Falta el tokenURI o el PDF de ${c.studentName || 'un alumno'}. Vuelve a generar los certificados.`,
       });
     }
   }
 
+  const verifyBase = baseVerificacion(req);
   const jobId = crearJobId();
   const job = {
     status: 'procesando',
@@ -423,7 +517,7 @@ router.post('/masivo/emitir', (req, res) => {
 
   // Procesa los mints uno por uno en segundo plano (la respuesta HTTP ya se
   // envió arriba) y actualiza "job.details[i]" en cada paso: en_cola ->
-  // enviando -> confirmando (ya hay hash) -> confirmado/error. También
+  // enviando -> confirmando (ya hay hash) -> estampando_qr -> confirmado/error. También
   // guarda cada resultado en el historial (tabla "emisiones").
   (async () => {
     for (let i = 0; i < job.details.length; i++) {
@@ -448,8 +542,18 @@ router.post('/masivo/emitir', (req, res) => {
         item.onChainTokenURI = onChainTokenURI;
         item.txHash = mintResult.receipt.transactionHash;
         item.explorerUrl = `${blockchain.explorerBaseUrl}${mintResult.receipt.transactionHash}`;
-        item.stage = entregado ? 'confirmado' : 'revisar_owner';
         item.status = entregado ? 'nft_transferido' : 'revisar_owner';
+
+        // Con el tokenId ya conocido se estampa el QR y se sube el PDF final.
+        // Si falla, el NFT ya existe: queda registrado con "QR pendiente".
+        item.stage = 'estampando_qr';
+        try {
+          Object.assign(item, await estamparQrYSubirPdfFinal(item.pdfCID, item.tokenId, verifyBase));
+        } catch (qrError) {
+          item.qrError = `QR pendiente: ${qrError.message}`;
+          console.error(`⚠️ ${item.studentName}:`, item.qrError);
+        }
+        item.stage = entregado ? 'confirmado' : 'revisar_owner';
 
         guardarEmision({
           loteId: jobId,
@@ -460,7 +564,13 @@ router.post('/masivo/emitir', (req, res) => {
           explorerUrl: item.explorerUrl,
           tokenURI: item.tokenURI,
           estado: item.status,
+          error: item.qrError,
           creadoPor,
+          institucionId,
+          pdfCid: item.pdfCID,
+          finalPdfCid: item.finalPdfCid,
+          finalPdfUrl: item.finalPdfUrl,
+          qrPayload: item.qrPayload,
         });
 
       } catch (mintError) {
@@ -477,6 +587,7 @@ router.post('/masivo/emitir', (req, res) => {
           estado: 'error_minteo',
           error: mintError.message,
           creadoPor,
+          institucionId,
         });
       }
     }
@@ -509,6 +620,32 @@ router.get('/masivo/emitir/:jobId', (req, res) => {
     details: job.details,
     error: job.error || null,
   });
+});
+
+// POST /api/certificados/qr/:tokenId — vuelve a estampar el QR de un NFT ya
+// minteado (ej. si Pinata falló justo después del mint) y guarda el nuevo
+// PDF final en su fila del historial.
+router.post('/qr/:tokenId', async (req, res) => {
+  try {
+    const emision = db
+      .prepare('SELECT * FROM emisiones WHERE token_id = ? ORDER BY id DESC LIMIT 1')
+      .get(Number(req.params.tokenId));
+
+    if (!emision) {
+      return res.status(404).json({ success: false, message: 'No hay una emisión registrada con ese tokenId.' });
+    }
+    if (!emision.pdf_cid) {
+      return res.status(409).json({ success: false, message: 'Esa emisión no tiene registrado el CID del PDF base.' });
+    }
+
+    const final = await estamparQrYSubirPdfFinal(emision.pdf_cid, emision.token_id, baseVerificacion(req));
+    db.prepare('UPDATE emisiones SET final_pdf_cid = ?, final_pdf_url = ?, qr_payload = ?, error = NULL WHERE id = ?')
+      .run(final.finalPdfCid, final.finalPdfUrl, final.qrPayload, emision.id);
+
+    res.status(200).json({ success: true, tokenId: emision.token_id, ...final });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message || 'No se pudo estampar el QR.' });
+  }
 });
 
 // GET /api/certificados/historial — devuelve todas las emisiones guardadas
