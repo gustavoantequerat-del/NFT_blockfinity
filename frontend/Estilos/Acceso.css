@@ -1,39 +1,66 @@
 /* =============================================================
-   Acceso: inicio de sesión y creación de cuenta.
+   Acceso: inicio de sesión (/login, /admin) y recuperación.
    ============================================================= */
-.acceso { min-height: 100vh; display: grid; grid-template-columns: 1.05fr .95fr; }
+.acceso { min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); }
 
 .acceso-lateral {
-  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
-  padding: 56px 60px; background: var(--tinta); color: #e9eaed;
+  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: 40px;
+  padding: clamp(32px, 5vw, 64px); background: #0b1120; color: #e2e8f0;
+}
+.acceso-lateral::before {
+  content: ""; position: absolute; inset: -20%; pointer-events: none;
+  background:
+    radial-gradient(40% 35% at 85% 10%, color-mix(in oklab, var(--acento) 55%, transparent), transparent 70%),
+    radial-gradient(35% 30% at 10% 90%, rgba(6, 182, 212, .35), transparent 70%),
+    radial-gradient(30% 30% at 55% 55%, rgba(124, 58, 237, .22), transparent 70%);
+  filter: blur(10px); animation: flotar 18s ease-in-out infinite alternate;
 }
 .acceso-lateral::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background:
-    radial-gradient(520px 520px at 82% 8%, color-mix(in oklab, var(--acento) 38%, transparent), transparent 60%),
-    radial-gradient(420px 420px at 12% 96%, color-mix(in oklab, var(--acento) 16%, transparent), transparent 60%);
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px);
+  background-size: 44px 44px; mask-image: radial-gradient(70% 70% at 50% 40%, #000, transparent);
 }
+@keyframes flotar { to { transform: translate3d(-4%, 3%, 0) scale(1.05); } }
 .acceso-lateral > * { position: relative; z-index: 1; }
-.acceso-pitch h2 { font-size: 30px; line-height: 1.2; font-weight: 600; max-width: 15ch; margin-bottom: 16px; }
-.acceso-pitch p { color: #aab0ba; max-width: 40ch; }
-.acceso-pitch ul { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 14px; }
-.acceso-pitch li { display: flex; gap: 12px; color: #cfd3da; font-size: 13.5px; }
-.acceso-pitch li::before {
-  content: "✓"; flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
-  background: color-mix(in oklab, var(--acento) 40%, transparent); color: #fff; font-size: 12px;
+.acceso-logo { width: 200px; height: auto; }
+.acceso-pitch h2 {
+  max-width: 16ch; margin-bottom: 18px; font-size: clamp(28px, 3.2vw, 42px); line-height: 1.08; font-weight: 800; letter-spacing: -.035em;
+  background: linear-gradient(120deg, #fff 30%, #a5b4fc 70%, #67e8f9); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
-.acceso-pie { color: #767c87; font-size: 12px; }
-.acceso-logo { width: 190px; height: auto; }
-.acceso-logo-movil { display: none; width: 170px; height: auto; margin-bottom: 26px; }
+.acceso-pitch p { max-width: 44ch; color: #94a3b8; font-size: 15px; }
+.acceso-pitch ul { list-style: none; padding: 0; margin: 30px 0 0; display: grid; gap: 12px; }
+.acceso-pitch li {
+  display: flex; gap: 12px; align-items: center; max-width: 440px; padding: 12px 14px; border-radius: 12px;
+  color: #cbd5e1; font-size: 13.5px; background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .07); backdrop-filter: blur(6px);
+}
+.acceso-pitch li::before {
+  content: "✓"; flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px;
+  background: var(--degradado); color: #fff; font-size: 12px; font-weight: 800;
+}
+.acceso-pie { color: #64748b; font-size: 12px; }
 
-.acceso-principal { display: grid; place-items: center; padding: 40px 16px; }
-.acceso-tarjeta { width: 100%; max-width: 400px; }
-.acceso-tarjeta h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+.acceso-principal {
+  display: grid; place-items: center; padding: 40px var(--margen-der) 40px var(--margen-izq);
+  background: radial-gradient(60% 50% at 50% 0%, var(--acento-suave), transparent 70%), var(--fondo);
+}
+.acceso-tarjeta {
+  width: 100%; max-width: 420px; padding: clamp(24px, 4vw, 36px);
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: 22px; box-shadow: var(--sombra-media);
+  animation: entrar .35s ease both;
+}
+.acceso-tarjeta h1 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
 .acceso-tarjeta .sub { color: var(--apagado); font-size: 13.5px; margin-bottom: 24px; }
-.acceso-enlaces { display: grid; gap: 10px; text-align: center; margin-top: 18px; }
+.acceso-enlaces { display: grid; gap: 10px; text-align: center; margin-top: 20px; }
+.acceso-logo-movil { display: none; width: 170px; height: auto; margin: 0 auto 24px; }
 
-@media (max-width: 880px) {
-  .acceso { grid-template-columns: 1fr; }
+/* Tablet vertical y celular: solo la tarjeta. */
+@media (max-width: 860px) {
+  .acceso { grid-template-columns: minmax(0, 1fr); }
   .acceso-lateral { display: none; }
   .acceso-logo-movil { display: block; }
+}
+
+@media (max-width: 480px) {
+  .acceso-principal { place-items: start center; padding-top: max(28px, env(safe-area-inset-top)); }
+  .acceso-tarjeta { border-radius: 18px; box-shadow: var(--sombra); }
 }

@@ -1,32 +1,44 @@
 /* =============================================================
    Asistente de emisión y pantalla de progreso.
    ============================================================= */
-.asistente { display: grid; grid-template-columns: 210px 1fr; gap: 30px; align-items: start; }
-.asistente-cuerpo { min-width: 0; }
+.asistente { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 30px; align-items: start; }
+.asistente-cuerpo { min-width: 0; padding: 26px; background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio); box-shadow: var(--sombra); }
 
-.pasos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 90px; }
-.pasos li { position: relative; display: flex; align-items: center; gap: 12px; padding: 9px 4px; font-weight: 600; color: var(--tinta-2); }
+.pasos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; position: sticky; top: 96px; }
+.pasos li { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 6px; font-weight: 700; color: var(--apagado); }
 .pasos li b {
-  z-index: 1; width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%;
-  background: var(--superficie); border: 1.5px solid var(--linea-fuerte); color: var(--apagado); font-size: 12.5px;
+  z-index: 1; width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 11px;
+  background: var(--superficie); border: 1.5px solid var(--linea-fuerte); color: var(--apagado); font-size: 13px;
+  transition: all var(--transicion);
 }
-.pasos li::before { content: ""; position: absolute; left: 17.5px; top: 37px; bottom: -9px; width: 1.5px; background: var(--linea-fuerte); }
+.pasos li::before { content: ""; position: absolute; left: 21.5px; top: 44px; bottom: -8px; width: 2px; border-radius: 2px; background: var(--linea); }
 .pasos li:last-child::before { display: none; }
-.pasos li.actual b { border-color: var(--acento); color: var(--acento-texto); box-shadow: 0 0 0 4px var(--acento-suave); }
-.pasos li.hecho b { background: var(--acento); border-color: var(--acento); color: var(--sobre-acento); }
-.pasos li.hecho::before { background: var(--acento); }
+.pasos li.actual { color: var(--tinta); }
+.pasos li.actual b { border-color: var(--acento); color: var(--acento-texto); box-shadow: 0 0 0 5px var(--acento-suave); }
+.pasos li.hecho { color: var(--tinta-2); }
+.pasos li.hecho b { background: var(--degradado); border-color: transparent; color: var(--sobre-acento); }
+.pasos li.hecho::before { background: var(--degradado); }
 
-.pie-asistente { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--linea); }
+.pie-asistente { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--linea); }
 
 .aviso-bloqueo {
-  display: inline-flex; padding: 7px 13px; border-radius: 999px; font-size: 12.5px; font-weight: 500;
+  display: inline-flex; padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
   color: var(--aviso); background: var(--aviso-suave);
 }
 
-@media (max-width: 880px) {
-  .asistente { grid-template-columns: 1fr; }
-  .pasos { position: static; flex-direction: row; overflow-x: auto; }
+@media (max-width: 1024px) {
+  .asistente { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .pasos { position: static; flex-direction: row; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .pasos li { flex: 1 0 auto; padding: 8px 12px; border-radius: 12px; background: var(--superficie); border: 1px solid var(--linea); }
+  .pasos li.actual { border-color: color-mix(in oklab, var(--acento) 40%, var(--linea)); }
   .pasos li::before { display: none; }
+}
+
+@media (max-width: 640px) {
+  .asistente-cuerpo { padding: 18px; }
   .pasos li span { display: none; }
   .pasos li.actual span { display: inline; }
+  .pasos li { flex: 0 0 auto; }
+  .pie-asistente { flex-direction: column-reverse; align-items: stretch; }
+  .pie-asistente .boton { width: 100%; }
 }
