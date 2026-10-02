@@ -43,7 +43,8 @@ function Interpretar_Consulta(Texto, Modo_Pedido) {
   let Cid_Qr = null;
   try {
     const Url = new URL(Consulta);
-    Modo = Url.searchParams.get('red') || Modo;
+    // Los QR anteriores al switch test/main no traen "red": son de main.
+    Modo = Url.searchParams.get('red') || Modo || 'main';
     Cid_Qr = Url.searchParams.get('cid');
     Consulta = Url.searchParams.get('token') || Cid_Qr || Consulta;
   } catch (_) { /* no es una URL */ }
