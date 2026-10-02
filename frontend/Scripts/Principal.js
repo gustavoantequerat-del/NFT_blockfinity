@@ -68,6 +68,24 @@ document.addEventListener('submit', async (Evento) => {
   if (Boton) Boton.disabled = false;
 });
 
+// En celular las tablas se muestran como tarjetas: cada celda lleva el
+// nombre de su columna (data-label) para mostrarlo al lado del valor.
+function Etiquetar_Tablas() {
+  document.querySelectorAll('.tabla').forEach((Tabla) => {
+    const Columnas = [...Tabla.querySelectorAll('thead th')].map((Celda) => Celda.textContent.trim());
+    Tabla.querySelectorAll('tbody tr').forEach((Fila) => {
+      [...Fila.children].forEach((Celda, Indice) => {
+        if (!Celda.hasAttribute('colspan') && Columnas[Indice] && !Celda.dataset.label) Celda.dataset.label = Columnas[Indice];
+      });
+    });
+  });
+}
+new MutationObserver(Etiquetar_Tablas).observe(document.body, { childList: true, subtree: true });
+
+document.addEventListener('keydown', (Evento) => {
+  if (Evento.key === 'Escape') document.body.classList.remove('menu-abierto');
+});
+
 // Rutas: /login y /admin (acceso), /registro y /registro_<institución>,
 // /invitado (landing pública), /verificar y la raíz con ?token=… (QR).
 // Sin sesión, el QR y /verificar llevan a la landing de invitados.

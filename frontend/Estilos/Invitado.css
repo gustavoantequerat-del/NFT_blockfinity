@@ -2,37 +2,60 @@
    Landing de invitados (/invitado): qué es el certificado NFT y
    "Comprobar" para verificarlo.
    ============================================================= */
-.invitado { min-height: 100vh; background: var(--fondo); }
+.invitado { min-height: 100vh; min-height: 100dvh; background: var(--fondo); }
 .invitado.activa { display: block; }
 
-.invitado-barra { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px; padding: 14px 24px; background: var(--tinta); }
+.invitado-barra {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px;
+  padding: max(12px, env(safe-area-inset-top)) var(--margen-der) 12px var(--margen-izq);
+  background: rgba(11, 17, 32, .82); backdrop-filter: saturate(160%) blur(14px); -webkit-backdrop-filter: saturate(160%) blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+}
+@media (min-width: 900px) { .invitado-barra { padding-left: 40px; padding-right: 40px; } }
 .invitado-logo { height: 36px; width: auto; }
-.invitado-entrar { color: #fff; font-size: 13px; }
+.invitado-entrar { color: #e2e8f0; font-size: 13px; }
 
 .invitado-portada {
-  padding: 72px 24px 64px; text-align: center; color: #fff;
-  background:
-    radial-gradient(600px 400px at 80% 0%, color-mix(in oklab, var(--acento) 45%, transparent), transparent 70%),
-    var(--tinta);
+  position: relative; overflow: hidden; padding: clamp(56px, 9vw, 110px) var(--margen-der) clamp(72px, 10vw, 120px) var(--margen-izq);
+  text-align: center; color: #fff; background: #0b1120;
 }
-.invitado-portada h1 { max-width: 20ch; margin: 0 auto 16px; font-size: 38px; line-height: 1.12; font-weight: 700; letter-spacing: -.02em; }
-.invitado-portada p { max-width: 60ch; margin: 0 auto 28px; font-size: 16px; line-height: 1.6; color: #c9ced6; }
-.invitado-antetitulo { margin-bottom: 14px !important; font-family: var(--fuente-mono); font-size: 12px !important; letter-spacing: .14em; text-transform: uppercase; color: #8fa6ff !important; }
+.invitado-portada::before {
+  content: ""; position: absolute; inset: -20%; pointer-events: none;
+  background:
+    radial-gradient(35% 40% at 80% 10%, color-mix(in oklab, var(--acento) 60%, transparent), transparent 70%),
+    radial-gradient(30% 35% at 15% 80%, rgba(6, 182, 212, .35), transparent 70%);
+  filter: blur(12px); animation: flotar 18s ease-in-out infinite alternate;
+}
+.invitado-portada > * { position: relative; z-index: 1; }
+.invitado-portada h1 {
+  max-width: 18ch; margin: 0 auto 18px; font-size: clamp(30px, 5.2vw, 56px); line-height: 1.05; font-weight: 800; letter-spacing: -.04em;
+  background: linear-gradient(120deg, #fff 35%, #a5b4fc 70%, #67e8f9); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.invitado-portada p { max-width: 60ch; margin: 0 auto 32px; font-size: clamp(15px, 1.6vw, 17px); line-height: 1.65; color: #94a3b8; }
+.invitado-antetitulo {
+  display: inline-flex; margin-bottom: 18px !important; padding: 6px 12px; border-radius: 999px;
+  font-family: var(--fuente-mono); font-size: 11.5px !important; letter-spacing: .14em; text-transform: uppercase;
+  color: #c7d2fe !important; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1);
+}
+@keyframes flotar { to { transform: translate3d(-4%, 3%, 0) scale(1.05); } }
 
-.invitado-pasos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 1000px; margin: -32px auto 0; padding: 0 16px; }
-.invitado-pasos div { padding: 22px; background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio); box-shadow: var(--sombra); }
-.invitado-pasos b { width: 30px; height: 30px; display: grid; place-items: center; margin-bottom: 12px; border-radius: 50%; background: var(--acento-suave); color: var(--acento-texto); }
-.invitado-pasos h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-.invitado-pasos p { font-size: 13.5px; line-height: 1.55; color: var(--apagado); }
+.invitado-pasos { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; max-width: 1040px; margin: -48px auto 0; padding: 0 var(--margen-der) 0 var(--margen-izq); }
+.invitado-pasos div { padding: 24px; background: var(--superficie); border: 1px solid var(--linea); border-radius: 20px; box-shadow: var(--sombra-media); transition: transform var(--transicion); }
+@media (hover: hover) { .invitado-pasos div:hover { transform: translateY(-3px); } }
+.invitado-pasos b { width: 36px; height: 36px; display: grid; place-items: center; margin-bottom: 14px; border-radius: 12px; background: var(--degradado); color: #fff; font-weight: 800; }
+.invitado-pasos h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 6px; }
+.invitado-pasos p { font-size: 13.5px; line-height: 1.6; color: var(--apagado); }
 
-.invitado-comprobar { max-width: 760px; margin: 0 auto; padding: 56px 16px 24px; scroll-margin-top: 70px; }
-.invitado-comprobar h2 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-.invitado-comprobar .ayuda { margin-bottom: 16px; }
+.invitado-comprobar { max-width: 780px; margin: 0 auto; padding: 64px var(--margen-der) 24px var(--margen-izq); scroll-margin-top: 70px; }
+.invitado-comprobar h2 { font-size: clamp(24px, 3vw, 30px); font-weight: 800; margin-bottom: 4px; }
+.invitado-comprobar .ayuda { margin-bottom: 18px; }
 
-@media (max-width: 760px) {
-  .invitado-barra { padding: 12px 16px; }
+@media (max-width: 860px) {
+  .invitado-pasos { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+}
+@media (max-width: 480px) {
   .invitado-logo { height: 28px; }
-  .invitado-portada { padding: 48px 16px 56px; }
-  .invitado-portada h1 { font-size: 28px; }
-  .invitado-pasos { grid-template-columns: 1fr; }
+  .invitado-barra .boton { display: none; }
+  .invitado-pasos div { padding: 18px; }
+  .invitado-comprobar { padding-top: 44px; }
 }

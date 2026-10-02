@@ -208,6 +208,17 @@ frontend/
 - **Variables de entorno:** en `MAYÚSCULAS`.
 - **Archivos con nombre fijo:** `index.html`, `package.json` y `README.md` conservan el nombre que esperan sus herramientas.
 - **CSS:** clases en español. Cada vista tiene su archivo y las variables de diseño están en `Base.css`.
+- **Responsive:** los puntos de quiebre están documentados en `Base.css`:
+
+  | Ancho | Dispositivo | Qué cambia |
+  |---|---|---|
+  | 1200px | Laptop chica | Paddings más compactos |
+  | 1024px | Tablet horizontal o laptop baja | El menú lateral pasa a cajón con fondo oscuro |
+  | 860px | Tablet vertical | Formularios a una columna |
+  | 640px | Celular | Tablas como tarjetas y botones a todo el ancho |
+  | 380px | Celular chico | Datos en una columna |
+
+  Hay ajustes adicionales para laptops de poca altura (1366×768) y márgenes seguros para el notch del iPhone. Se probó sin desbordes horizontales en 1920, 1366, 1280, 1024, 820, 768, 390, 360 y 320 px de ancho.
 
 ## Problemas frecuentes
 
