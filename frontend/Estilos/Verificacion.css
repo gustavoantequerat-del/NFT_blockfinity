@@ -1,0 +1,20 @@
+/* =============================================================
+   Verificación pública de certificados.
+   ============================================================= */
+.buscador { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.buscador .entrada:first-child { flex: 1; min-width: 240px; }
+
+.resultado { overflow: hidden; background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio); box-shadow: var(--sombra); }
+.resultado-cabecera { display: flex; align-items: center; gap: 14px; padding: 18px 22px; }
+.resultado-cabecera b { display: block; font-size: 16px; }
+.resultado-cabecera small { font-size: 13px; }
+.resultado-marca { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 50%; color: #fff; font-size: 22px; font-weight: 700; }
+.resultado-cuerpo { padding: 20px 22px; margin: 0; }
+.resultado-pie { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding: 0 22px 20px; }
+
+.resultado--valido .resultado-cabecera { background: var(--ok-suave); color: #2c6a49; }
+.resultado--valido .resultado-cabecera b { color: var(--ok); }
+.resultado--valido .resultado-marca { background: var(--ok); }
+.resultado--invalido .resultado-cabecera { background: var(--error-suave); color: #7d271c; }
+.resultado--invalido .resultado-cabecera b { color: var(--error); }
+.resultado--invalido .resultado-marca { background: var(--error); }

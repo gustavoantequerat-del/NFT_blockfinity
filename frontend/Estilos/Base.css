@@ -1,0 +1,66 @@
+/* =============================================================
+   Base: variables de diseño, reset y utilidades.
+   ============================================================= */
+:root {
+  --fuente: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --fuente-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --fondo: #f5f6f8;
+  --superficie: #ffffff;
+  --superficie-2: #fafbfc;
+  --tinta: #181b21;
+  --tinta-2: #41454e;
+  --apagado: #71757e;
+  --tenue: #9a9da4;
+  --linea: #e7e8ec;
+  --linea-fuerte: #d6d8dd;
+
+  --acento: #2f56d3;
+  --acento-presionado: #2342a8;
+  --acento-suave: #eef2fd;
+  --sobre-acento: #ffffff;
+
+  --ok: #1f8a52;
+  --ok-suave: #e8f5ee;
+  --error: #c0392b;
+  --error-suave: #fbecea;
+  --aviso: #9a6b00;
+  --aviso-suave: #fbf3e0;
+
+  --radio: 12px;
+  --radio-chico: 8px;
+  --sombra: 0 1px 2px rgba(20, 22, 28, .05), 0 1px 3px rgba(20, 22, 28, .04);
+  --sombra-alta: 0 18px 48px rgba(20, 22, 28, .16);
+}
+
+/* La cuenta de institución usa un acento violeta para distinguirse. */
+body[data-rol="viewer"] {
+  --acento: #6d3bd4;
+  --acento-presionado: #572cb0;
+  --acento-suave: #f1ecfd;
+  --fondo: #f6f4fb;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--fuente);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--tinta);
+  background: var(--fondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p { margin: 0; }
+button, input, select { font-family: inherit; }
+
+[hidden] { display: none !important; }
+
+.mono { font-family: var(--fuente-mono); font-feature-settings: "tnum" 1; }
+.derecha { text-align: right; }
+.quebrar { word-break: break-all; }
+.texto-ok { color: var(--ok); }
+.texto-error { color: var(--error); font-size: 12px; }

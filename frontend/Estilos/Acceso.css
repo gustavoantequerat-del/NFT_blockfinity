@@ -1,0 +1,43 @@
+/* =============================================================
+   Acceso: inicio de sesión y creación de cuenta.
+   ============================================================= */
+.acceso { min-height: 100vh; display: grid; grid-template-columns: 1.05fr .95fr; }
+
+.acceso-lateral {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between;
+  padding: 56px 60px; background: var(--tinta); color: #e9eaed;
+}
+.acceso-lateral::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(520px 520px at 82% 8%, color-mix(in oklab, var(--acento) 38%, transparent), transparent 60%),
+    radial-gradient(420px 420px at 12% 96%, color-mix(in oklab, var(--acento) 16%, transparent), transparent 60%);
+}
+.acceso-lateral > * { position: relative; z-index: 1; }
+.acceso-pitch h2 { font-size: 30px; line-height: 1.2; font-weight: 600; max-width: 15ch; margin-bottom: 16px; }
+.acceso-pitch p { color: #aab0ba; max-width: 40ch; }
+.acceso-pitch ul { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 14px; }
+.acceso-pitch li { display: flex; gap: 12px; color: #cfd3da; font-size: 13.5px; }
+.acceso-pitch li::before {
+  content: "✓"; flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+  background: color-mix(in oklab, var(--acento) 40%, transparent); color: #fff; font-size: 12px;
+}
+.acceso-pie { color: #767c87; font-size: 12px; }
+
+.acceso-principal { display: grid; place-items: center; padding: 40px 16px; }
+.acceso-tarjeta { width: 100%; max-width: 400px; }
+.acceso-tarjeta h1 { font-size: 22px; font-weight: 600; margin-bottom: 6px; }
+.acceso-tarjeta .sub { color: var(--apagado); font-size: 13.5px; margin-bottom: 24px; }
+.acceso-enlaces { display: grid; gap: 10px; text-align: center; margin-top: 18px; }
+
+.pestanas { display: flex; gap: 22px; border-bottom: 1px solid var(--linea); margin-bottom: 26px; }
+.pestanas button {
+  padding: 0 0 12px; margin-bottom: -1px; border: 0; border-bottom: 2px solid transparent; background: transparent;
+  font-size: 13.5px; font-weight: 600; color: var(--apagado); cursor: pointer;
+}
+.pestanas button.activa { color: var(--acento); border-bottom-color: var(--acento); }
+
+@media (max-width: 880px) {
+  .acceso { grid-template-columns: 1fr; }
+  .acceso-lateral { display: none; }
+}

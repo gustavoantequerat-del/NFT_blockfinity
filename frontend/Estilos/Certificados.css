@@ -1,0 +1,25 @@
+/* =============================================================
+   Vista del estudiante: tarjetas de certificados.
+   ============================================================= */
+.grilla-certificados { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+
+.certificado {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio); box-shadow: var(--sombra);
+}
+.certificado-sello {
+  height: 104px; display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
+  border-bottom: 1px solid var(--linea); color: var(--acento); font-size: 12px; font-weight: 600;
+  background: repeating-linear-gradient(135deg, transparent 0 11px, color-mix(in oklab, var(--acento) 7%, transparent) 11px 22px), var(--acento-suave);
+}
+.certificado-anillo {
+  width: 52px; height: 52px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--superficie); border: 2px solid color-mix(in oklab, var(--acento) 35%, transparent);
+  font-size: 22px; font-weight: 700;
+}
+.certificado-cuerpo { flex: 1; display: flex; flex-direction: column; align-items: flex-start; padding: 16px 18px 18px; }
+.certificado-cuerpo h3 { font-size: 15px; font-weight: 600; line-height: 1.35; margin: 12px 0 4px; }
+.certificado-cuerpo p { font-size: 12.5px; color: var(--apagado); margin-bottom: 12px; }
+.certificado-cuerpo .pares { align-self: stretch; }
+.certificado-pie { display: flex; gap: 8px; margin-top: auto; align-self: stretch; }
+.certificado-pie .boton { flex: 1; }

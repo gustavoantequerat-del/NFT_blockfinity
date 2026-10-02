@@ -1,90 +1,168 @@
-# Plataforma de Certificados NFT — Módulo de Autenticación
+# Certificados NFT · Blockfinity
 
-Aplicación web con sistema completo de autenticación: registro, inicio de sesión, sesión persistente con JWT y recuperación de contraseña. El frontend es una SPA en vanilla JS y el backend corre en Node.js con SQLite nativo (sin servidor de base de datos externo).
+Plataforma para emitir certificados académicos como NFT. Cada PDF lleva un QR con su **token ID** y el **CID** de IPFS, y cualquiera puede verificarlo contra el contrato.
 
----
-
-## Requisitos previos
-
-- [Node.js 22+](https://nodejs.org/) (se usa el módulo SQLite nativo, disponible a partir de v22.5)
-- Git
+- **Backend:** Node.js 22+ con Express y SQLite nativo (`node:sqlite`).
+- **Frontend:** una sola app en JavaScript puro (módulos ES) y CSS modular, sin frameworks ni Tailwind. Express la sirve.
+- **Registro de wallet:** forma parte de la misma app. Ya no hay un proyecto React aparte ni un paso de compilación. Se abre en `/registro` y en `/registroASOBAN`.
 
 ---
 
-## Cómo levantar el proyecto desde cero
+## Puesta en marcha
 
-### 1. Clonar el repositorio
-
-```bash
-git clone <url-del-repo>
-cd login
-```
-
-### 2. Instalar dependencias del backend
+Requisitos: [Node.js 22.5+](https://nodejs.org/) y `pdftoppm` (Poppler) para la imagen del NFT. En Linux se instala con `apt install poppler-utils`. En Windows ya viene incluido en `pdf-poppler`.
 
 ```bash
 cd backend
 npm install
+cp .env.example .env      # completa las credenciales test y main (ver abajo)
+npm run seed              # crea la institución y las cuentas de prueba
+npm start                 # http://localhost:3000
 ```
 
-### 3. Crear el archivo `.env`
-
-Los siguientes comandos se ejecutan desde la carpeta `backend` en la que ya estás. Copia el archivo de ejemplo y rellena los valores:
-
-```bash
-cp .env.example .env
-```
-
-Edita `backend/.env` y define tus propios valores (ver la sección de variables más abajo).
-
-### 4. Crear el usuario de prueba
-
-Los siguientes comandos se ejecutan desde la carpeta `backend` en la que ya estás:
-
-```bash
-node --experimental-sqlite seed.js
-```
-
-Esto crea (o actualiza) el usuario de prueba en la base de datos local.
-
-### 5. Arrancar el servidor
-
-Los siguientes comandos se ejecutan desde la carpeta `backend` en la que ya estás:
-
-```bash
-node --experimental-sqlite server.js
-```
-
-### 6. Abrir la aplicación
-
-Abre tu navegador en: [http://localhost:3000](http://localhost:3000)
+Al arrancar, la consola muestra el estado de las dos redes y cuál está activa. El servidor arranca aunque una red no esté configurada: el panel muestra qué variables faltan.
 
 ---
 
-## Variables de entorno (`backend/.env`)
+## Modo TEST y modo MAIN
 
-| Variable     | Descripción                                                        |
-|--------------|--------------------------------------------------------------------|
-| `JWT_SECRET` | Clave secreta para firmar los tokens JWT. Usa una cadena larga y aleatoria. |
-| `PORT`       | Puerto en el que escucha el servidor. Por defecto: `3000`.         |
+En `backend/.env` cada credencial va dos veces: con el sufijo `_TEST` y con el sufijo `_MAIN`.
+
+| Variable | Descripción |
+|---|---|
+| `RPC_URL_*` | RPC de la red (Infura, Alchemy, etc.) |
+| `CHAIN_ID_*` | `11155111` para Sepolia, `1` para Ethereum Mainnet, `137` para Polygon… |
+| `PRIVATE_KEY_*` | Clave de la wallet emisora (owner del contrato). La dirección se deriva de esta clave |
+| `CONTRACT_ADDRESS_*` | Contrato `CertificateNFT` desplegado en esa red |
+| `PINATA_API_KEY_*`, `PINATA_SECRET_API_KEY_*` | Claves de Pinata (IPFS) |
+| `EXPLORER_URL_*` | Opcional. Para las redes conocidas se completa sola |
+
+El administrador cambia de modo con el switch **Test | Main** de la barra superior, o desde **Configuración**, donde ve el estado, la wallet, el contrato y el saldo de cada red. El cambio:
+
+- Se guarda en la base de datos (tabla `configuracion`) y se mantiene aunque el servidor se reinicie.
+- Solo se permite si la red responde con el chain ID esperado y la wallet emisora es owner del contrato.
+- Para pasar a **MAIN** se pide confirmación.
+
+| | TEST | MAIN |
+|---|---|---|
+| Red | testnet (gas de prueba) | red principal (gas real) |
+| Aprobar un lote | **no** descuenta crédito | descuenta `$0.77` por certificado |
+| Historial y verificación | solo emisiones de test | solo emisiones de main |
+| Protección | `CHAIN_ID_TEST=1` se rechaza | — |
+
+Las emisiones hechas antes de este cambio se marcan como `main`.
+
+Otras variables: `JWT_SECRET` (obligatoria), `PORT`, `PUBLIC_VERIFY_URL` (dominio público al que apunta el QR), `CERT_QR_*` y `CERT_NAME_*` (posición del QR y del nombre en la plantilla) y `DEMO_STUDENT_WALLET`.
 
 ---
 
-## Usuario de prueba
+## Flujo de emisión con QR
 
-Después de correr `seed.js`, puedes entrar con:
+```
+PREPARAR (paso 3 del asistente)
+1. Plantilla + nombre ──► PDF base (sin QR) ──► IPFS = pdf_cid
 
-| Campo       | Valor                          |
-|-------------|--------------------------------|
-| Correo      | `laura.mendez@universidad.edu` |
-| Contraseña  | `demoaccess`                   |
+EMITIR (paso 4, un estudiante a la vez)
+2. Se lee el próximo token_id del contrato (tokenCounter)
+3. QR = <PUBLIC_VERIFY_URL>?token=<token_id>&cid=<pdf_cid>&red=<test|main>
+4. El QR se sobrepone al PDF base y se re-renderiza ──► PDF final ──► IPFS
+5. Imagen PNG del PDF final + metadata JSON ──► IPFS = tokenURI
+6. Recién entonces se mintea el NFT directo a la wallet del estudiante
+```
+
+El NFT que recibe el estudiante ya apunta al **PDF con QR**. La metadata guarda también `pdf_base` (el CID que va en el QR). Los mints se ejecutan de a uno, así el token_id previsto es el que asigna el contrato. Si no coincide, la emisión queda como `revisar_token`.
+
+Datos que se guardan en la tabla `emisiones`: `token_id`, `token_uri`, `pdf_cid`, `final_pdf_cid`, `final_pdf_url`, `qr_payload`, `tx_hash` y `red`.
+
+### Verificación pública
+
+Al escanear el QR se abre `/?token=…&cid=…&red=…` y el resultado aparece sin iniciar sesión. A mano se puede buscar por token ID (`12`, `#CERT-12`), por CID (de metadata, del PDF base o del PDF final), por la URL del QR, por hash de transacción o por wallet. El certificado es **válido** solo si se cumplen las tres condiciones:
+
+1. El token existe en el contrato de esa red (`ownerOf`).
+2. Su `tokenURI` on-chain coincide con el registrado al emitir.
+3. Si se consulta con el QR, el `cid` es el del PDF de ese token.
 
 ---
 
-## Notas importantes
+## Roles y cuentas de prueba
 
-Los siguientes archivos y carpetas **no se suben al repositorio** (están en `.gitignore`):
+`npm run seed` crea la institución **UDEMO · Universidad Demo** (con $100 de crédito) y estas cuentas:
 
-- `backend/.env` — contiene secretos; cada desarrollador crea el suyo a partir de `.env.example`
-- `backend/node_modules/` — se regenera con `npm install`
-- `backend/database.sqlite` — se regenera al arrancar el servidor por primera vez
+| Rol | Correo | Contraseña | Qué ve |
+|---|---|---|---|
+| Administrador | `laura.mendez@universidad.edu` | `demoaccess` | Instituciones, Emisiones, Solicitudes de lotes, Registros de wallet, Nueva emisión, Configuración (switch test/main) |
+| Institución | `consulta@universidad.edu` | `consulta123` | Dashboard, Estudiantes y lotes (arma el lote con su plantilla y lo envía al admin) |
+| Estudiante | `estudiante@universidad.edu` | `estudiante123` | Mis certificados (los NFTs de su wallet) |
+
+La wallet del estudiante demo es la cuenta #1 pública de Hardhat. Úsala **solo en test**.
+
+**Crear cuenta** (en la pantalla de acceso):
+
+- **Estudiante:** la cuenta queda activa de inmediato.
+- **Institución:** la cuenta queda pendiente hasta que el admin la aprueba en **Instituciones**.
+
+Por esa pantalla nunca se pueden crear cuentas de administrador.
+
+Cambia estas contraseñas antes de salir a producción.
+
+### Flujo completo de un lote
+
+1. La institución agrega estudiantes con su wallet, adjunta la plantilla PDF y pulsa **Enviar al administrador**.
+2. El admin lo autoriza en **Solicitudes de lotes**. Solo en MAIN se descuenta el crédito.
+3. El admin pulsa **Emitir**. El asistente se abre con la plantilla y los estudiantes del lote.
+4. El admin genera los PDFs base, confirma y sigue el progreso. El lote queda como `emitida`.
+
+También se puede emitir sin lote: en el asistente se sube la plantilla y un Excel con las columnas `nombre` y `wallet`. **Registros de wallet** exporta ese Excel con las personas que se registraron en `/registro` o en `/registroASOBAN`.
+
+---
+
+## API principal
+
+| Ruta | Acceso |
+|---|---|
+| `POST /api/login`, `POST /api/registro`, `GET /api/sesion`, `POST /api/olvide-contrasena`, `POST /api/restablecer-contrasena` | público / sesión |
+| `GET /api/publico/verificar?q=…&red=…`, `GET /api/publico/instituciones`, `POST /api/publico/registro-wallet` | público |
+| `GET /api/panel/red`, `GET /api/panel/red/estado`, `PUT /api/panel/red/modo` | sesión / admin |
+| `/api/panel/resumen`, `/instituciones`, `/solicitudes-acceso`, `/estudiantes`, `/lotes` | admin e institución (solo la suya) |
+| `/api/panel/mis-certificados`, `/api/panel/mi-wallet` | estudiante |
+| `/api/certificados/*` (validar Excel, preparar, emitir, historial, registros de wallet, emisión individual) | admin |
+
+Las respuestas tienen la forma `{ exito, mensaje, … }`.
+
+---
+
+## Estructura y convenciones
+
+```
+backend/
+  Servidor.js              Express: estáticos, rutas y arranque
+  Configuracion_Red.js     Credenciales _TEST/_MAIN y modo activo
+  Emision_Certificados.js  PDF base → QR → PDF final → mint
+  Blockchain.js            Contrato: mint, consulta de tokens, cola de minteo
+  Ipfs.js                  Pinata
+  Plantilla_Pdf.js         Nombre, QR y vista previa del PDF
+  Rutas_*.js               Sesión, panel, público y certificados
+  Base_Datos.js            Esquema SQLite y migraciones
+  Semilla.js               Cuentas de prueba
+frontend/
+  index.html               Todas las vistas: acceso, registro de wallet y panel
+  Scripts/*.js             Un módulo por área (Acceso, Red, Asistente_Emision…)
+  Estilos/*.css            Un archivo por área (Base, Componentes, Estructura…)
+  Recursos/                Logos y fuentes del registro de wallet
+```
+
+- **Archivos, funciones y variables:** en español y en `Snake_Camel_Case` (`Emitir_Certificado`, `Wallet_Alumno`, `Rutas_Panel.js`).
+- **Tablas, columnas y claves JSON:** se quedan en `snake_case` minúscula (`token_id`, `final_pdf_url`) para no romper las bases de datos existentes.
+- **Variables de entorno:** en `MAYÚSCULAS`.
+- **Archivos con nombre fijo:** `index.html`, `package.json` y `README.md` conservan el nombre que esperan sus herramientas.
+- **CSS:** clases en español. Cada vista tiene su archivo y las variables de diseño están en `Base.css`.
+
+## Problemas frecuentes
+
+| Síntoma | Causa probable |
+|---|---|
+| El QR abre `localhost` | Falta `PUBLIC_VERIFY_URL` en `.env` |
+| No deja pasar a MAIN | Faltan variables `_MAIN`, el RPC apunta a otro chain ID o la wallet no es owner del contrato. El motivo aparece en **Configuración** |
+| `revisar_token` en una emisión | Otro proceso minteó con la misma wallet mientras se emitía: el QR apunta a otro token |
+| "pdftoppm falló" | Instala `poppler-utils` en el servidor |
+| Un certificado de test no verifica en main | Test y main tienen contratos distintos: el QR incluye `red=`, y a mano se elige la red en el buscador |
