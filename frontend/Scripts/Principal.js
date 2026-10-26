@@ -10,11 +10,12 @@ import * as Verificacion from './Verificacion.js';
 import * as Registro_Estudiante from './Registro_Estudiante.js';
 import * as Camara_Qr from './Camara_Qr.js';
 import * as Invitado from './Invitado.js';
+import * as Plantillas from './Plantillas.js';
 import { Leer_Token } from './Api.js';
 import { Mostrar_Pantalla } from './Navegacion.js';
 import { Mostrar_Aviso } from './Utilidades.js';
 
-const Modulos = [Acceso, Red, Instituciones, Asistente_Emision, Panel_Institucion, Estudiante, Verificacion, Registro_Estudiante, Camara_Qr];
+const Modulos = [Acceso, Red, Instituciones, Asistente_Emision, Panel_Institucion, Estudiante, Verificacion, Registro_Estudiante, Camara_Qr, Plantillas];
 const Acciones = Object.assign({ Alternar_Menu: () => document.body.classList.toggle('menu-abierto') }, ...Modulos.map((M) => M.Acciones || {}));
 const Formularios = Object.assign({}, ...Modulos.map((M) => M.Formularios || {}));
 const Archivos = Object.assign({}, ...Modulos.map((M) => M.Archivos || {}));
@@ -83,7 +84,9 @@ function Etiquetar_Tablas() {
 new MutationObserver(Etiquetar_Tablas).observe(document.body, { childList: true, subtree: true });
 
 document.addEventListener('keydown', (Evento) => {
-  if (Evento.key === 'Escape') document.body.classList.remove('menu-abierto');
+  if (Evento.key !== 'Escape') return;
+  document.body.classList.remove('menu-abierto');
+  document.getElementById('modal-plantilla').hidden = true;
 });
 
 // Rutas: /login y /admin (acceso), /registro y /registro_<institución>,

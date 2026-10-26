@@ -4,8 +4,9 @@ import { Llamar_Api } from './Api.js';
 import { Estado, Institucion_Actual } from './Estado.js';
 import { Registrar_Pantalla, Mostrar_Pantalla } from './Navegacion.js';
 import { Cargar_Instituciones } from './Instituciones.js';
+import { Cargar_Selector_Plantillas, Plantilla_Elegida, Enlace_Plantilla } from './Plantillas.js';
 import {
-  Por_Id, Poner_Texto, Escapar, Acortar, Dinero, Formatear_Fecha, Etiqueta_Estado,
+  Por_Id, Poner_Texto, Escapar, Acortar, Creditos, Formatear_Fecha, Etiqueta_Estado,
   Es_Wallet_Valida, Fila_Vacia, Mostrar_Aviso, Datos_Formulario,
 } from './Utilidades.js';
 
@@ -18,13 +19,13 @@ Registrar_Pantalla('tablero', {
     const { lotes: Lotes } = await Llamar_Api('/api/panel/lotes');
     Poner_Texto('tab-nombre', Institucion?.nombre || 'Dashboard');
     Por_Id('tab-ruta').value = Institucion ? `${window.location.origin}${Institucion.ruta_registro}` : '';
-    Poner_Texto('tab-credito', Dinero(Institucion?.credito_usd));
+    Poner_Texto('tab-credito', Creditos(Institucion?.credito_usd));
     Poner_Texto('tab-certificados', Institucion ? `${Institucion.entregados} / ${Institucion.certificados}` : 0);
     Poner_Texto('tab-pendientes', Lotes.filter((L) => L.estado === 'pendiente').length);
     Por_Id('tabla-lotes-institucion').innerHTML = Lotes.map((L) => `
       <tr><td class="mono">${Formatear_Fecha(L.creado_en)}</td><td><b>${Escapar(L.nombre)}</b></td>
-      <td class="mono derecha">${L.cantidad}</td><td class="mono derecha">${Dinero(L.costo_usd)}</td>
-      <td>${Escapar(L.plantilla_nombre || '—')}</td><td>${Etiqueta_Estado(L.estado)}</td></tr>`).join('')
+      <td class="mono derecha">${L.cantidad}</td><td class="mono derecha"><span class="credito">${Creditos(L.costo_usd)}</span></td>
+      <td>${Enlace_Plantilla(L)}</td><td>${Etiqueta_Estado(L.estado)}</td></tr>`).join('')
       || Fila_Vacia(6, 'Todavía no enviaste ningún lote.');
   },
 });
@@ -40,9 +41,9 @@ function Pintar_Estudiantes() {
       <td class="derecha">${E.usuario_id ? `<a class="enlace" data-accion="Enlace_Recuperacion" data-id="${E.id}">Enlace de contraseña</a> · ` : ''}<a class="enlace" data-accion="Quitar_Estudiante" data-id="${E.id}">Quitar</a></td></tr>`;
   }).join('') || Fila_Vacia(5, 'Agrega estudiantes para crear un lote.');
   Poner_Texto('costo-cantidad', Validos);
-  Poner_Texto('costo-unitario', Dinero(Estado.Precio_Unitario));
-  Poner_Texto('costo-total', Dinero(Validos * Estado.Precio_Unitario));
-  Poner_Texto('costo-credito', Dinero(Institucion?.credito_usd));
+  Poner_Texto('costo-unitario', Creditos(Estado.Precio_Unitario));
+  Poner_Texto('costo-total', Creditos(Validos * Estado.Precio_Unitario));
+  Poner_Texto('costo-credito', Creditos(Institucion?.credito_usd));
 }
 
 async function Cargar_Estudiantes() {
@@ -56,7 +57,7 @@ Registrar_Pantalla('estudiantes', {
   Al_Mostrar: async () => {
     await Cargar_Instituciones();
     Estado.Precio_Unitario = (await Llamar_Api('/api/panel/lotes')).precio_unitario;
-    await Cargar_Estudiantes();
+    await Promise.all([Cargar_Estudiantes(), Cargar_Selector_Plantillas('lote', Institucion_Actual()?.id, Plantilla_Elegida('lote'))]);
   },
 });
 
@@ -74,11 +75,10 @@ async function Quitar_Estudiante(Nodo) {
 }
 
 async function Solicitar_Lote(Formulario) {
-  const Datos = new FormData(Formulario);
-  if (!Datos.get('plantilla')?.size) return Mostrar_Aviso('Adjunta la plantilla PDF del lote.', true);
-  await Llamar_Api('/api/panel/lotes', { formulario: Datos });
-  Formulario.reset();
-  document.querySelector('[data-archivo-nombre="plantilla_lote"]').textContent = 'Adjuntar plantilla PDF';
+  const Plantilla_Id = Plantilla_Elegida('lote');
+  if (!Plantilla_Id) return Mostrar_Aviso('Sube o elige la plantilla PDF del lote.', true);
+  await Llamar_Api('/api/panel/lotes', { json: { nombre: Formulario.nombre.value, plantilla_id: Plantilla_Id } });
+  Formulario.nombre.value = '';
   Mostrar_Aviso('Lote enviado al administrador.');
   Mostrar_Pantalla('tablero');
 }

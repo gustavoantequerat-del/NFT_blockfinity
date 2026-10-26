@@ -3,8 +3,9 @@
 import { Llamar_Api } from './Api.js';
 import { Estado, Institucion_Actual } from './Estado.js';
 import { Registrar_Pantalla, Mostrar_Pantalla } from './Navegacion.js';
+import { Pintar_Galeria_Plantillas, Enlace_Plantilla } from './Plantillas.js';
 import {
-  Por_Id, Poner_Texto, Escapar, Acortar, Dinero, Formatear_Fecha, Etiqueta_Estado,
+  Por_Id, Poner_Texto, Escapar, Acortar, Creditos, Formatear_Fecha, Etiqueta_Estado,
   Enlaces_Emision, Fila_Vacia, Mostrar_Aviso, Datos_Formulario,
 } from './Utilidades.js';
 
@@ -39,13 +40,13 @@ function Pintar_Instituciones() {
   const Lista = Estado.Instituciones;
   Poner_Texto('inst-total', Lista.length);
   Poner_Texto('inst-certificados', Lista.reduce((Suma, I) => Suma + I.certificados, 0));
-  Poner_Texto('inst-credito', Dinero(Lista.reduce((Suma, I) => Suma + Number(I.credito_usd), 0)));
+  Poner_Texto('inst-credito', Creditos(Lista.reduce((Suma, I) => Suma + Number(I.credito_usd), 0)));
   Poner_Texto('inst-estudiantes', Lista.reduce((Suma, I) => Suma + I.estudiantes, 0));
   Por_Id('tabla-instituciones').innerHTML = Lista.map((I) => `
     <tr>
       <td><span class="celda-marca">${Logo_Miniatura(I)}<span><b>${Escapar(I.nombre)}</b>${I.es_principal ? ' <span class="pastilla">principal</span>' : ''}<small class="sub-celda">${Escapar(I.admin_correo || 'sin admin institucional')}</small></span></span></td>
       <td><a class="enlace-tx" href="${Escapar(I.ruta_registro)}" target="_blank">${Escapar(I.ruta_registro)}</a></td>
-      <td class="mono derecha">${Dinero(I.credito_usd)}</td>
+      <td class="mono derecha"><span class="credito">${Creditos(I.credito_usd)}</span></td>
       <td class="mono derecha">${I.estudiantes}</td>
       <td class="mono derecha">${I.entregados} / ${I.certificados}</td>
       <td>${Etiqueta_Estado(I.estado)}</td>
@@ -77,13 +78,14 @@ Registrar_Pantalla('institucion', {
     Poner_Texto('det-estudiantes', I.estudiantes);
     Poner_Texto('det-certificados', I.certificados);
     Poner_Texto('det-entregados', I.entregados);
-    Poner_Texto('det-credito', Dinero(I.credito_usd));
+    Poner_Texto('det-credito', Creditos(I.credito_usd));
     Por_Id('det-color').value = I.color;
     // La principal recibe a los estudiantes de las instituciones borradas: no se borra.
     Por_Id('zona-eliminar').hidden = I.es_principal;
     Por_Id('aviso-principal').hidden = !I.es_principal;
     Por_Id('det-responsable').value = I.responsable_nombre || '';
     Por_Id('det-correo').value = I.admin_correo || '';
+    Pintar_Galeria_Plantillas('det-plantillas', I.id).catch((Error_Galeria) => Mostrar_Aviso(Error_Galeria.message, true));
     const { emisiones: Emisiones } = await Llamar_Api(`/api/certificados/historial?institucion_id=${I.id}`);
     Por_Id('tabla-det-emisiones').innerHTML = Emisiones.map((E) => `
       <tr><td class="mono">${Formatear_Fecha(E.creado_en)}</td><td><b>${Escapar(E.nombre_alumno)}</b></td>
@@ -107,9 +109,9 @@ Registrar_Pantalla('solicitudes', {
       }
       return `<tr>
         <td><b>${Escapar(L.institucion_nombre)}</b></td>
-        <td><b>${Escapar(L.nombre)}</b><small class="sub-celda">${L.cantidad} certificados · ${Escapar(L.plantilla_nombre || 'sin plantilla')} · ${Formatear_Fecha(L.creado_en)}</small></td>
-        <td class="mono derecha">${Dinero(L.costo_usd)}</td>
-        <td class="mono derecha">${Dinero(L.credito_usd)}</td>
+        <td><b>${Escapar(L.nombre)}</b><small class="sub-celda">${L.cantidad} certificados · ${Enlace_Plantilla(L)} · ${Formatear_Fecha(L.creado_en)}</small></td>
+        <td class="mono derecha"><span class="credito">${Creditos(L.costo_usd)}</span></td>
+        <td class="mono derecha"><span class="credito">${Creditos(L.credito_usd)}</span></td>
         <td>${Etiqueta_Estado(L.estado)}${L.red ? ` <small class="sub-celda">${Escapar(L.red)}</small>` : ''}</td>
         <td class="derecha">${Acciones}</td>
       </tr>`;
@@ -163,7 +165,7 @@ async function Eliminar_Institucion() {
 async function Recargar_Credito(Formulario) {
   await Llamar_Api(`/api/panel/instituciones/${Institucion_Actual().id}/credito`, { json: Datos_Formulario(Formulario) });
   Formulario.reset();
-  Mostrar_Aviso('Crédito actualizado.');
+  Mostrar_Aviso('Credits actualizados.');
   Mostrar_Pantalla('institucion');
 }
 
@@ -174,7 +176,7 @@ function Abrir_Institucion(Nodo) {
 
 async function Resolver_Lote(Nodo) {
   const Respuesta = await Llamar_Api(`/api/panel/lotes/${Nodo.dataset.id}/resolver`, { json: { accion: Nodo.dataset.decision } });
-  Mostrar_Aviso(Nodo.dataset.decision === 'aprobar' ? (Respuesta.cobrado ? 'Lote autorizado y crédito descontado.' : 'Lote autorizado (modo test: sin descontar crédito).') : 'Lote rechazado.');
+  Mostrar_Aviso(Nodo.dataset.decision === 'aprobar' ? (Respuesta.cobrado ? 'Lote autorizado y Credits descontados.' : 'Lote autorizado (modo test: sin descontar Credits).') : 'Lote rechazado.');
   await Cargar_Instituciones();
   Mostrar_Pantalla('solicitudes');
 }

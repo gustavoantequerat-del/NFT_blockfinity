@@ -86,9 +86,10 @@ function Ruta_Pdftoppm() {
   return path.join(path.dirname(Paquete), 'lib', 'win', 'poppler-0.51', 'bin', 'pdftoppm.exe');
 }
 
-// Renderiza la primera página y la centra en un lienzo cuadrado blanco:
-// las wallets muestran la imagen del NFT recortada en 1:1.
-async function Generar_Vista_Previa(Ruta_Pdf) {
+// Renderiza la primera página como PNG. Para la imagen del NFT (Cuadrada)
+// la centra en un lienzo cuadrado blanco, porque las wallets la muestran
+// recortada en 1:1.
+async function Generar_Vista_Previa(Ruta_Pdf, Cuadrada = true) {
   const Carpeta = path.dirname(Ruta_Pdf);
   const Prefijo = path.join(Carpeta, `${path.parse(Ruta_Pdf).name}-vista`);
 
@@ -102,6 +103,7 @@ async function Generar_Vista_Previa(Ruta_Pdf) {
   // pdftoppm agrega "-1" o "-01" según la cantidad de páginas del PDF.
   const Ruta_Renderizada = [`${Prefijo}-1.png`, `${Prefijo}-01.png`].find((Ruta) => fs.existsSync(Ruta));
   if (!Ruta_Renderizada) throw new Error('No se pudo generar la vista previa del PDF.');
+  if (!Cuadrada) return Ruta_Renderizada;
 
   const Ruta_Cuadrada = `${Prefijo}-cuadrada.png`;
   const { width: Ancho, height: Alto } = await sharp(Ruta_Renderizada).metadata();
@@ -114,4 +116,19 @@ async function Generar_Vista_Previa(Ruta_Pdf) {
   return Ruta_Cuadrada;
 }
 
-module.exports = { Escribir_Nombre_En_Plantilla, Estampar_Qr, Generar_Vista_Previa };
+// Vista previa de una plantilla tal como quedará el certificado: con un
+// nombre de ejemplo y el QR en sus posiciones reales (CERT_NAME_* y CERT_QR_*).
+async function Generar_Vista_Plantilla(Ruta_Plantilla, Ruta_Png) {
+  const Con_Nombre = await Escribir_Nombre_En_Plantilla(fs.readFileSync(Ruta_Plantilla), 'Nombre del Estudiante');
+  const Con_Qr = await Estampar_Qr(Con_Nombre, 'https://ejemplo.com/?token=0', 0);
+  const Ruta_Temporal = `${Ruta_Png}.tmp.pdf`;
+  fs.writeFileSync(Ruta_Temporal, Con_Qr);
+  try {
+    fs.renameSync(await Generar_Vista_Previa(Ruta_Temporal, false), Ruta_Png);
+  } finally {
+    if (fs.existsSync(Ruta_Temporal)) fs.unlinkSync(Ruta_Temporal);
+  }
+  return Ruta_Png;
+}
+
+module.exports = { Escribir_Nombre_En_Plantilla, Estampar_Qr, Generar_Vista_Previa, Generar_Vista_Plantilla };

@@ -19,6 +19,9 @@ if (!Secreto_Jwt) {
 process.on('unhandledRejection', (Error_Async) => console.error('⚠️ unhandledRejection:', Error_Async));
 
 const Aplicacion = express();
+// Detrás de Caddy/nginx en la misma máquina: así req.protocol es https y los
+// enlaces de recuperación de contraseña salen con la URL correcta.
+Aplicacion.set('trust proxy', 'loopback');
 const Puerto = Number(process.env.PORT) || 3000;
 const Carpeta_Frontend = path.join(__dirname, '..', 'frontend');
 
@@ -41,6 +44,7 @@ Aplicacion.get(['/login', '/admin', '/verificar', '/invitado', '/registro', /^\/
 
 Aplicacion.use('/api', Rutas_Sesion);
 Aplicacion.use('/api/publico', Rutas_Publicas);
+Aplicacion.use('/api/panel/plantillas', require('./Rutas_Plantillas').Rutas);
 Aplicacion.use('/api/panel', Rutas_Panel);
 Aplicacion.use('/api/certificados', Requerir_Sesion, Requerir_Rol('admin'), Rutas_Certificados);
 
@@ -50,7 +54,7 @@ Aplicacion.use('/api', (_Peticion, Respuesta) => Respuesta.status(404).json({ ex
 Aplicacion.use((Error_Express, _Peticion, Respuesta, _Siguiente) => {
   console.error('❌', Error_Express.message);
   const Es_Subida = Error_Express.name === 'MulterError' || Error_Express.status === 400;
-  const Mensaje = Error_Express.code === 'LIMIT_FILE_SIZE' ? 'El archivo supera el tamaño permitido (1 MB).' : Error_Express.message;
+  const Mensaje = Error_Express.code === 'LIMIT_FILE_SIZE' ? 'El archivo supera el tamaño permitido (logo: 1 MB, plantilla: 15 MB).' : Error_Express.message;
   Respuesta.status(Es_Subida ? 400 : Error_Express.status || 500).json({ exito: false, mensaje: Mensaje || 'Error inesperado.' });
 });
 

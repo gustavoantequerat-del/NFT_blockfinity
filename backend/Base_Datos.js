@@ -107,6 +107,19 @@ Base_Datos.exec(`
     FOREIGN KEY (resuelto_por) REFERENCES usuarios(id)
   );
 
+  -- Plantillas PDF guardadas por institución: las que la institución adjunta
+  -- a sus lotes y las que sube el admin en el asistente.
+  CREATE TABLE IF NOT EXISTS plantillas (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    institucion_id  INTEGER NOT NULL,
+    nombre          TEXT NOT NULL,
+    archivo         TEXT NOT NULL,
+    creado_por      INTEGER,
+    creado_en       TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (institucion_id) REFERENCES instituciones(id),
+    FOREIGN KEY (creado_por) REFERENCES usuarios(id)
+  );
+
   -- Ajustes globales del sistema (por ahora solo el modo de red: test / main).
   CREATE TABLE IF NOT EXISTS configuracion (
     clave TEXT PRIMARY KEY,
@@ -142,6 +155,8 @@ const Migraciones = [
   // La institución principal (Blockfinity Advisors) no se puede borrar y
   // recibe a los estudiantes de las instituciones eliminadas.
   'ALTER TABLE instituciones ADD COLUMN es_principal INTEGER NOT NULL DEFAULT 0',
+  // Plantilla (tabla plantillas) con la que se emite cada lote.
+  'ALTER TABLE lotes_solicitados ADD COLUMN plantilla_id INTEGER',
 ];
 
 for (const Migracion of Migraciones) {
@@ -177,5 +192,13 @@ Base_Datos.exec(`
   UPDATE usuarios SET institucion_id = (SELECT id FROM instituciones WHERE es_principal = 1) WHERE rol = 'student' AND institucion_id IS NULL;
   UPDATE emisiones SET institucion_id = (SELECT id FROM instituciones WHERE es_principal = 1) WHERE institucion_id IS NULL;
 `);
+
+// Lotes enviados antes de existir la tabla plantillas: su PDF pasa a ser una
+// plantilla guardada de la institución (el archivo ya está en uploads/plantillas).
+for (const Lote of Base_Datos.prepare('SELECT id, institucion_id, plantilla_nombre, plantilla_archivo, creado_por, creado_en FROM lotes_solicitados WHERE plantilla_id IS NULL AND plantilla_archivo IS NOT NULL').all()) {
+  const Resultado = Base_Datos.prepare('INSERT INTO plantillas (institucion_id, nombre, archivo, creado_por, creado_en) VALUES (?, ?, ?, ?, ?)')
+    .run(Lote.institucion_id, Lote.plantilla_nombre || 'plantilla.pdf', Lote.plantilla_archivo, Lote.creado_por, Lote.creado_en);
+  Base_Datos.prepare('UPDATE lotes_solicitados SET plantilla_id = ? WHERE id = ?').run(Resultado.lastInsertRowid, Lote.id);
+}
 
 module.exports = Base_Datos;

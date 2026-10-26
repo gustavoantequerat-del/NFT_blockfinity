@@ -22,8 +22,8 @@ function Pintar_Red() {
 
   const Banda = Por_Id('banda-red');
   const Mensajes = [];
-  if (Modo === 'test' && Rol_Actual() === 'admin') Mensajes.push('Modo TEST: emisiones en testnet, sin costo real y sin descontar crédito.');
-  if (Modo === 'main' && Rol_Actual() === 'admin') Mensajes.push('Modo MAIN: cada emisión gasta gas real y los lotes descuentan crédito.');
+  if (Modo === 'test' && Rol_Actual() === 'admin') Mensajes.push('Modo TEST: emisiones en testnet, sin costo real y sin descontar Credits.');
+  if (Modo === 'main' && Rol_Actual() === 'admin') Mensajes.push('Modo MAIN: cada emisión gasta gas real y los lotes descuentan Credits.');
   if (Error_Red && Rol_Actual() === 'admin') Mensajes.push(`⚠ ${Error_Red}`);
   Banda.hidden = !Mensajes.length;
   Banda.textContent = Mensajes.join('  ');
@@ -32,7 +32,7 @@ function Pintar_Red() {
 async function Cambiar_Modo_Red(Nodo) {
   const Modo = Nodo.dataset.modo;
   if (Modo === Estado.Red.modo) return;
-  if (Modo === 'main' && !confirm('Vas a pasar a MAIN: las emisiones gastarán gas real y los lotes descontarán crédito. ¿Continuar?')) return;
+  if (Modo === 'main' && !confirm('Vas a pasar a MAIN: las emisiones gastarán gas real y los lotes descontarán Credits. ¿Continuar?')) return;
   try {
     await Llamar_Api('/api/panel/red/modo', { metodo: 'PUT', json: { modo: Modo } });
     await Cargar_Red();
@@ -71,7 +71,24 @@ Registrar_Pantalla('configuracion', {
     Por_Id('tarjetas-redes').innerHTML = '<div class="cargando"><span class="giro"></span> Consultando ambas redes…</div>';
     const Datos = await Llamar_Api('/api/panel/red/estado');
     Por_Id('tarjetas-redes').innerHTML = Datos.redes.map(Tarjeta_Red).join('');
+    await Pintar_Estado_Correo();
   },
 });
 
+// Sin correo configurado, "¿Olvidaste tu contraseña?" no puede enviar el enlace.
+async function Pintar_Estado_Correo() {
+  const Correo = await Llamar_Api('/api/panel/correo/estado');
+  Por_Id('correo-prueba-para').value ||= Estado.Usuario?.correo || '';
+  Por_Id('correo-estado').innerHTML = Correo.configurado
+    ? `<div class="banda banda--info">Enviando con ${Correo.proveedor === 'smtp' ? `SMTP (<span class="mono">${Escapar(Correo.servidor)}</span>)` : 'Resend'} desde <span class="mono">${Escapar(Correo.remitente)}</span>.</div>`
+    : `<div class="banda banda--error">No hay correo configurado: los enlaces de recuperación no llegan (solo se muestran en la consola del servidor).
+       Configura <span class="mono">SMTP_HOST</span>, <span class="mono">SMTP_PUERTO</span>, <span class="mono">SMTP_USUARIO</span>, <span class="mono">SMTP_CONTRASENA</span> y <span class="mono">CORREO_REMITENTE</span> en <span class="mono">backend/.env</span> (por ejemplo, una cuenta de correo de cPanel) y reinicia el servidor.</div>`;
+}
+
+async function Probar_Correo(Formulario) {
+  const { mensaje: Mensaje } = await Llamar_Api('/api/panel/correo/prueba', { json: { para: Formulario.para.value } });
+  Mostrar_Aviso(Mensaje);
+}
+
 export const Acciones = { Cambiar_Modo_Red };
+export const Formularios = { Probar_Correo };

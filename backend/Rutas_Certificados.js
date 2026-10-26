@@ -3,13 +3,13 @@
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
-const path = require('path');
 const xlsx = require('xlsx');
 
 const Base_Datos = require('./Base_Datos');
 const Blockchain = require('./Blockchain');
 const Configuracion_Red = require('./Configuracion_Red');
 const Emision = require('./Emision_Certificados');
+const { Obtener_Plantilla, Ruta_Plantilla_Existente } = require('./Rutas_Plantillas');
 
 const Rutas = express.Router();
 const Subida = multer({ dest: Emision.Carpeta_Subidas });
@@ -72,14 +72,16 @@ Rutas.post('/validar-excel', Subida.single('excel'), (Peticion, Respuesta) => {
 Rutas.get('/lote/:id/filas', (Peticion, Respuesta) => {
   try {
     const { Lote, Filas } = Leer_Lote_Aprobado(Number(Peticion.params.id));
-    Respuesta.json({ exito: true, filas: Filas, tiene_plantilla: Boolean(Lote.plantilla_archivo), plantilla_nombre: Lote.plantilla_nombre });
+    const Plantilla = Lote.plantilla_id ? Base_Datos.prepare('SELECT id, institucion_id, nombre, creado_en FROM plantillas WHERE id = ?').get(Lote.plantilla_id) : null;
+    Respuesta.json({ exito: true, filas: Filas, institucion_id: Lote.institucion_id, plantilla: Plantilla || null });
   } catch (Error_Ruta) {
     Responder_Error(Respuesta, Error_Ruta, 400);
   }
 });
 
 // Paso 3: genera y sube a IPFS el PDF base (sin QR) de cada fila válida.
-// Los datos salen del Excel subido o de un lote aprobado (lote_id).
+// Los datos salen del Excel subido o de un lote aprobado (lote_id). La
+// plantilla es una guardada (plantilla_id), un PDF subido o la del lote.
 Rutas.post('/masivo/preparar', Subida.fields([{ name: 'plantilla', maxCount: 1 }, { name: 'excel', maxCount: 1 }]), async (Peticion, Respuesta) => {
   const Plantilla = Peticion.files?.plantilla?.[0];
   const Excel = Peticion.files?.excel?.[0];
@@ -87,13 +89,19 @@ Rutas.post('/masivo/preparar', Subida.fields([{ name: 'plantilla', maxCount: 1 }
     const Red = Configuracion_Red.Obtener_Red_Activa();
     const Lote_Id = Number(Peticion.body?.lote_id) || null;
     let Filas = [];
+    const Plantilla_Id = Number(Peticion.body?.plantilla_id) || null;
     let Ruta_Plantilla = Plantilla?.path;
 
+    if (Plantilla_Id) {
+      const Guardada = Obtener_Plantilla(Plantilla_Id, Peticion.Usuario);
+      if (!Guardada) return Respuesta.status(400).json({ exito: false, mensaje: 'La plantilla elegida ya no existe.' });
+      Ruta_Plantilla = Ruta_Plantilla_Existente(Guardada);
+    }
     if (Lote_Id) {
       const Datos_Lote = Leer_Lote_Aprobado(Lote_Id);
       Filas = Datos_Lote.Filas;
-      if (!Ruta_Plantilla && Datos_Lote.Lote.plantilla_archivo) {
-        Ruta_Plantilla = path.join(Emision.Carpeta_Subidas, 'plantillas', Datos_Lote.Lote.plantilla_archivo);
+      if (!Ruta_Plantilla && Datos_Lote.Lote.plantilla_id) {
+        Ruta_Plantilla = Ruta_Plantilla_Existente(Obtener_Plantilla(Datos_Lote.Lote.plantilla_id, Peticion.Usuario));
       }
     } else if (Excel) {
       Filas = Leer_Filas_Excel(Excel.path);
