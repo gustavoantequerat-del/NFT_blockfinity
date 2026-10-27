@@ -69,7 +69,7 @@ async function Agregar_Estudiante(Formulario) {
 }
 
 async function Quitar_Estudiante(Nodo) {
-  if (!confirm('¿Quitar a este estudiante? Si se registró con cuenta, también pierde el acceso.')) return;
+  if (!confirm('¿Quitar a este estudiante de tu institución? Si se registró con cuenta y no está en otra institución, también pierde el acceso.')) return;
   await Llamar_Api(`/api/panel/estudiantes/${Nodo.dataset.id}`, { metodo: 'DELETE' });
   await Cargar_Estudiantes();
 }

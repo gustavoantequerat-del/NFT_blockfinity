@@ -6,8 +6,10 @@ import { Por_Id, Escapar, Acortar, Formatear_Fecha, Mostrar_Aviso, Datos_Formula
 const Gateway_Ipfs = 'https://gateway.pinata.cloud/ipfs/';
 
 async function Cargar_Mis_Certificados() {
-  const { wallet: Wallet, certificados: Certificados } = await Llamar_Api('/api/panel/mis-certificados');
+  const { wallet: Wallet, certificados: Certificados, instituciones: Instituciones } = await Llamar_Api('/api/panel/mis-certificados');
   Por_Id('mi-wallet').value = Wallet || '';
+  // Una misma cuenta puede estar en varias instituciones.
+  if (Instituciones?.length) Por_Id('mis-instituciones').innerHTML = Instituciones.map((Nombre) => `<span class="pastilla">${Escapar(Nombre)}</span>`).join('');
   Por_Id('certificados-vacio').hidden = Certificados.length > 0;
   Por_Id('grilla-certificados').innerHTML = Certificados.map((C) => {
     const Pdf = C.final_pdf_url || (C.pdf_cid ? `${Gateway_Ipfs}${C.pdf_cid}` : '');
