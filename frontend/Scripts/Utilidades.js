@@ -18,8 +18,10 @@ export function Acortar(Valor) {
   return Texto.length > 14 ? `${Texto.slice(0, 6)}…${Texto.slice(-4)}` : Texto || '—';
 }
 
-export function Dinero(Valor) {
-  return `$${Number(Valor || 0).toFixed(2)}`;
+// Saldo y costos en Credits (no en dinero). El icono de moneda lo pone la
+// clase .credito (ver Componentes.css).
+export function Creditos(Valor) {
+  return Number(Valor || 0).toLocaleString('es', { maximumFractionDigits: 2 });
 }
 
 export function Formatear_Fecha(Valor) {
@@ -43,7 +45,7 @@ const Textos_Estado = {
   revisar_token: 'revisar token',
   estampando_qr: 'estampando QR',
   en_cola: 'en cola',
-  credito_bajo: 'crédito bajo',
+  credito_bajo: 'Credits bajos',
 };
 
 export function Etiqueta_Estado(Estado) {

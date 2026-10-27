@@ -9,22 +9,14 @@ const Base_Datos = require('./Base_Datos');
 const Blockchain = require('./Blockchain');
 const Configuracion_Red = require('./Configuracion_Red');
 const { Requerir_Sesion, Requerir_Rol } = require('./Autenticacion');
-const { Carpeta_Subidas } = require('./Emision_Certificados');
 const { Crear_Enlace_Recuperacion } = require('./Recuperacion');
+const { Obtener_Plantilla, Ruta_Plantilla_Existente, Borrar_Plantillas_De_Institucion } = require('./Rutas_Plantillas');
+const Correo = require('./Correo');
 const Marca = require('./Marca_Institucion');
 const bcrypt = require('bcryptjs');
 
 const Rutas = express.Router();
 const Precio_Por_Certificado = 0.77;
-
-const Carpeta_Plantillas = path.join(Carpeta_Subidas, 'plantillas');
-fs.mkdirSync(Carpeta_Plantillas, { recursive: true });
-const Subida_Plantilla = multer({
-  storage: multer.diskStorage({
-    destination: Carpeta_Plantillas,
-    filename: (_Peticion, _Archivo, Listo) => Listo(null, `lote-${Date.now()}-${Math.round(Math.random() * 1e6)}.pdf`),
-  }),
-});
 
 fs.mkdirSync(Marca.Carpeta_Logos, { recursive: true });
 const Extensiones_Logo = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
@@ -109,6 +101,23 @@ Rutas.put('/red/modo', Solo_Admin, async (Peticion, Respuesta) => {
   } catch (Error_Red) {
     Respuesta.status(400).json({ exito: false, mensaje: Error_Red.message });
   }
+});
+
+// ---------- Correo (recuperación de contraseña) ----------
+
+Rutas.get('/correo/estado', Solo_Admin, (_Peticion, Respuesta) => {
+  Respuesta.json({ exito: true, ...Correo.Estado_Correo() });
+});
+
+Rutas.post('/correo/prueba', Solo_Admin, async (Peticion, Respuesta) => {
+  const Para = String(Peticion.body?.para || Peticion.Usuario.correo).trim();
+  const Resultado = await Correo.Enviar_Correo({
+    Para,
+    Asunto: 'Prueba de correo · Certificados NFT',
+    Html: '<p>Si recibiste este correo, la recuperación de contraseña ya puede enviar enlaces.</p>',
+  });
+  if (!Resultado.Enviado) return Respuesta.status(400).json({ exito: false, mensaje: Resultado.Error });
+  Respuesta.json({ exito: true, mensaje: `Correo de prueba enviado a ${Para}.` });
 });
 
 // ---------- Instituciones ----------
@@ -207,23 +216,27 @@ Rutas.patch('/instituciones/:id', Solo_Admin, Subida_Logo.single('logo'), async 
 // Borra la institución. Sus estudiantes (cuentas y lista) y sus certificados
 // pasan a la institución principal (Blockfinity Advisors), así siguen
 // pudiendo entrar y ver sus certificados. Se borran sus cuentas de admin
-// institucional, sus lotes y su logo.
+// institucional, sus lotes, sus plantillas y su logo.
 Rutas.delete('/instituciones/:id', Solo_Admin, (Peticion, Respuesta) => {
   const Institucion = Base_Datos.prepare('SELECT * FROM instituciones WHERE id = ?').get(Number(Peticion.params.id));
   if (!Institucion) return Respuesta.status(404).json({ exito: false, mensaje: 'Institución no encontrada.' });
   if (Institucion.es_principal) return Respuesta.status(400).json({ exito: false, mensaje: 'La institución principal no se puede eliminar.' });
   const Principal_Id = Marca.Id_Institucion_Principal(Base_Datos);
-  const Plantillas = Base_Datos.prepare('SELECT plantilla_archivo FROM lotes_solicitados WHERE institucion_id = ? AND plantilla_archivo IS NOT NULL').all(Institucion.id);
+  let Archivos_Plantillas = [];
 
   Base_Datos.exec('BEGIN');
   try {
+    // Primero lo que referencia a la cuenta institucional (creado_por).
+    Base_Datos.prepare('DELETE FROM lotes_solicitados WHERE institucion_id = ?').run(Institucion.id);
+    Archivos_Plantillas = Borrar_Plantillas_De_Institucion(Institucion.id);
     Base_Datos.prepare("DELETE FROM reset_tokens WHERE user_id IN (SELECT id FROM usuarios WHERE institucion_id = ? AND rol = 'viewer')").run(Institucion.id);
+    // Los estudiantes que cargó la cuenta institucional se quedan, sin autor.
+    Base_Datos.prepare("UPDATE estudiantes_institucionales SET creado_por = NULL WHERE creado_por IN (SELECT id FROM usuarios WHERE institucion_id = ? AND rol = 'viewer')").run(Institucion.id);
     Base_Datos.prepare("DELETE FROM usuarios WHERE institucion_id = ? AND rol = 'viewer'").run(Institucion.id);
     Base_Datos.prepare("UPDATE usuarios SET institucion_id = ? WHERE institucion_id = ? AND rol = 'student'").run(Principal_Id, Institucion.id);
     Base_Datos.prepare('UPDATE estudiantes_institucionales SET institucion_id = ? WHERE institucion_id = ?').run(Principal_Id, Institucion.id);
     Base_Datos.prepare('UPDATE emisiones SET institucion_id = ? WHERE institucion_id = ?').run(Principal_Id, Institucion.id);
     Base_Datos.prepare('DELETE FROM solicitudes_acceso WHERE institucion_id = ?').run(Institucion.id);
-    Base_Datos.prepare('DELETE FROM lotes_solicitados WHERE institucion_id = ?').run(Institucion.id);
     Base_Datos.prepare('DELETE FROM instituciones WHERE id = ?').run(Institucion.id);
     Base_Datos.exec('COMMIT');
   } catch (Error_Borrado) {
@@ -231,7 +244,7 @@ Rutas.delete('/instituciones/:id', Solo_Admin, (Peticion, Respuesta) => {
     return Respuesta.status(500).json({ exito: false, mensaje: Error_Borrado.message });
   }
   Borrar_Archivo(Institucion.logo_archivo && path.join(Marca.Carpeta_Logos, Institucion.logo_archivo));
-  for (const Lote of Plantillas) Borrar_Archivo(path.join(Carpeta_Plantillas, Lote.plantilla_archivo));
+  Archivos_Plantillas.forEach(Borrar_Archivo);
   console.log(`🗑️ Institución "${Institucion.nombre}" eliminada por ${Peticion.Usuario.correo}; sus estudiantes pasan a la institución principal`);
   Respuesta.json({ exito: true });
 });
@@ -298,7 +311,7 @@ Rutas.post('/estudiantes/:id/enlace-recuperacion', Solo_Personal, (Peticion, Res
 Rutas.get('/lotes', Solo_Personal, (Peticion, Respuesta) => {
   const Filtro = Es_Admin(Peticion) ? '' : 'WHERE l.institucion_id = ?';
   const Consulta = Base_Datos.prepare(`
-    SELECT l.id, l.institucion_id, l.nombre, l.plantilla_nombre, l.cantidad, l.costo_usd, l.estado, l.red,
+    SELECT l.id, l.institucion_id, l.nombre, l.plantilla_id, l.plantilla_nombre, l.cantidad, l.costo_usd, l.estado, l.red,
            l.creado_en, l.resuelto_en, i.nombre AS institucion_nombre, i.etiqueta AS institucion_etiqueta, i.credito_usd
     FROM lotes_solicitados l JOIN instituciones i ON i.id = l.institucion_id
     ${Filtro} ORDER BY l.creado_en DESC, l.id DESC
@@ -307,31 +320,31 @@ Rutas.get('/lotes', Solo_Personal, (Peticion, Respuesta) => {
   Respuesta.json({ exito: true, lotes: Lotes, precio_unitario: Precio_Por_Certificado });
 });
 
-// La institución envía el lote con su plantilla PDF; se guarda una copia de
-// sus estudiantes con wallet válida para que el admin emita exactamente eso.
-Rutas.post('/lotes', Solo_Personal, Subida_Plantilla.single('plantilla'), (Peticion, Respuesta) => {
+// La institución envía el lote con una plantilla ya subida (ver
+// Rutas_Plantillas.js); se guarda una copia de sus estudiantes con wallet
+// válida para que el admin emita exactamente eso.
+Rutas.post('/lotes', Solo_Personal, (Peticion, Respuesta) => {
   const Institucion_Id = Institucion_De(Peticion, Peticion.body?.institucion_id);
   const Nombre = String(Peticion.body?.nombre || '').trim();
-  const Borrar_Plantilla = () => Peticion.file && fs.existsSync(Peticion.file.path) && fs.unlinkSync(Peticion.file.path);
+  if (!Institucion_Id || !Nombre) return Respuesta.status(400).json({ exito: false, mensaje: 'Institución y nombre del lote son requeridos.' });
 
-  if (!Institucion_Id || !Nombre) {
-    Borrar_Plantilla();
-    return Respuesta.status(400).json({ exito: false, mensaje: 'Institución y nombre del lote son requeridos.' });
+  const Plantilla = Obtener_Plantilla(Peticion.body?.plantilla_id, Peticion.Usuario);
+  if (!Plantilla || Plantilla.institucion_id !== Institucion_Id) return Respuesta.status(400).json({ exito: false, mensaje: 'Sube o elige la plantilla PDF del lote.' });
+  try {
+    Ruta_Plantilla_Existente(Plantilla);
+  } catch (Error_Plantilla) {
+    return Respuesta.status(400).json({ exito: false, mensaje: Error_Plantilla.message });
   }
-  if (!Peticion.file) return Respuesta.status(400).json({ exito: false, mensaje: 'Adjunta la plantilla PDF del lote.' });
 
   const Estudiantes = Base_Datos.prepare('SELECT nombre, wallet FROM estudiantes_institucionales WHERE institucion_id = ? ORDER BY id').all(Institucion_Id)
     .filter((Estudiante) => Blockchain.Es_Wallet_Valida(Estudiante.wallet));
-  if (!Estudiantes.length) {
-    Borrar_Plantilla();
-    return Respuesta.status(400).json({ exito: false, mensaje: 'No hay estudiantes con wallet válida para este lote.' });
-  }
+  if (!Estudiantes.length) return Respuesta.status(400).json({ exito: false, mensaje: 'No hay estudiantes con wallet válida para este lote.' });
 
   const Costo = Number((Estudiantes.length * Precio_Por_Certificado).toFixed(2));
   const Resultado = Base_Datos.prepare(`
-    INSERT INTO lotes_solicitados (institucion_id, nombre, plantilla_nombre, plantilla_archivo, estudiantes_json, cantidad, costo_usd, creado_por)
+    INSERT INTO lotes_solicitados (institucion_id, nombre, plantilla_id, plantilla_nombre, estudiantes_json, cantidad, costo_usd, creado_por)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(Institucion_Id, Nombre, Peticion.file.originalname, Peticion.file.filename, JSON.stringify(Estudiantes), Estudiantes.length, Costo, Peticion.Usuario.id);
+  `).run(Institucion_Id, Nombre, Plantilla.id, Plantilla.nombre, JSON.stringify(Estudiantes), Estudiantes.length, Costo, Peticion.Usuario.id);
   Respuesta.status(201).json({ exito: true, lote_id: Number(Resultado.lastInsertRowid) });
 });
 
@@ -347,7 +360,7 @@ Rutas.post('/lotes/:id/resolver', Solo_Admin, (Peticion, Respuesta) => {
   if (Cobrar) {
     const Institucion = Base_Datos.prepare('SELECT credito_usd FROM instituciones WHERE id = ?').get(Lote.institucion_id);
     if (Number(Institucion?.credito_usd) < Number(Lote.costo_usd)) {
-      return Respuesta.status(409).json({ exito: false, mensaje: 'La institución no tiene crédito suficiente.' });
+      return Respuesta.status(409).json({ exito: false, mensaje: 'La institución no tiene Credits suficientes.' });
     }
   }
 

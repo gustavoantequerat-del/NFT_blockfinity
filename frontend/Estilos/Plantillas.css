@@ -1,0 +1,46 @@
+/* =============================================================
+   Plantillas PDF: selector con vista previa, galería y modal.
+   ============================================================= */
+.selector-plantilla { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 0 22px; align-items: start; margin-bottom: 8px; }
+.selector-plantilla-controles .archivo { margin-bottom: 0; }
+
+/* Marco de la imagen: muestra un brillo mientras carga. */
+.plantilla-miniatura {
+  position: relative; display: grid; place-items: center; overflow: hidden;
+  aspect-ratio: 1.414; border-radius: var(--radio-chico);
+  background: var(--superficie-2); border: 1px solid var(--linea);
+}
+.plantilla-miniatura img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.plantilla-miniatura img:not([src]) { visibility: hidden; }
+.plantilla-miniatura[data-cargando="1"]::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--superficie) 80%, transparent) 50%, transparent 70%) var(--superficie-2);
+  background-size: 200% 100%; animation: brillo 1.2s linear infinite;
+}
+@keyframes brillo { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+
+.vista-plantilla { margin: 0; }
+.vista-plantilla .plantilla-miniatura { box-shadow: var(--sombra); }
+.vista-plantilla figcaption { font-size: 12px; color: var(--apagado); margin-top: 8px; }
+
+.galeria-plantillas { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+.plantilla-tarjeta {
+  display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px; text-align: left; cursor: pointer;
+  font: inherit; color: inherit; background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio);
+  transition: border-color var(--transicion), box-shadow var(--transicion), transform var(--transicion);
+}
+.plantilla-tarjeta:hover { border-color: var(--acento); box-shadow: var(--sombra-media); transform: translateY(-2px); }
+.plantilla-tarjeta .plantilla-miniatura { margin-bottom: 6px; }
+.plantilla-tarjeta b { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plantilla-tarjeta small { font-size: 11.5px; color: var(--apagado); }
+
+.modal-tarjeta--ancha { max-width: 920px; }
+.plantilla-miniatura--grande { margin: 14px auto 0; max-height: 70vh; }
+
+@media (max-width: 860px) {
+  .selector-plantilla { grid-template-columns: minmax(0, 1fr); }
+  .vista-plantilla { margin-top: 14px; }
+}
+@media (max-width: 640px) {
+  .galeria-plantillas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+}

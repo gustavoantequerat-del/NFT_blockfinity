@@ -31,7 +31,7 @@ npm start                 # http://localhost:3000 → redirige a /login
 | `/invitado` | Cualquiera, sin cuenta | Landing que explica el certificado NFT, con **Comprobar** (escribir el identificador o escanear el QR con la cámara) |
 | `/verificar` y `/?token=…` | Cualquiera | El QR del certificado abre `/?token=…&cid=…&red=…`. Sin sesión lleva a la landing de `/invitado` con el resultado; con sesión, a la pantalla de verificación del panel |
 
-**Recuperar contraseña:** "¿Olvidaste tu contraseña?" en `/login` (y en `/admin`) envía un enlace de un solo uso, válido 1 hora (`/login?reset=…`). El correo se envía con la API de [Resend](https://resend.com) usando `RESEND_API_KEY` y `CORREO_REMITENTE`. Sin esas variables, el enlace aparece en la consola del servidor. Además, el admin institucional puede generar el enlace de un estudiante desde **Estudiantes y lotes → Enlace de contraseña**, y el administrador cambia la contraseña del admin institucional desde el detalle de la institución.
+**Recuperar contraseña:** "¿Olvidaste tu contraseña?" en `/login` (y en `/admin`) envía un enlace de un solo uso, válido 1 hora (`/login?reset=…`). El correo se envía por **SMTP** (por ejemplo, una cuenta de correo creada en cPanel: `SMTP_HOST`, `SMTP_PUERTO` 465 o 587, `SMTP_USUARIO`, `SMTP_CONTRASENA`) o con la API de [Resend](https://resend.com) (`RESEND_API_KEY`), siempre con `CORREO_REMITENTE`. Sin ninguno, el enlace solo aparece en la consola del servidor. En **Configuración** el admin ve si el correo está configurado y puede **enviar un correo de prueba**, que muestra el error exacto del servidor SMTP si falla. Detrás de Caddy/nginx el servidor confía en el proxy local, así el enlace sale con `https`. Además, el admin institucional puede generar el enlace de un estudiante desde **Estudiantes y lotes → Enlace de contraseña**, y el administrador cambia la contraseña del admin institucional desde el detalle de la institución.
 
 La raíz `/` redirige a `/login`, salvo que traiga los parámetros del QR.
 
@@ -61,13 +61,13 @@ El administrador cambia de modo con el switch **Test | Main** de la barra superi
 | | TEST | MAIN |
 |---|---|---|
 | Red | testnet (gas de prueba) | red principal (gas real) |
-| Aprobar un lote | **no** descuenta crédito | descuenta `$0.77` por certificado |
+| Aprobar un lote | **no** descuenta Credits | descuenta 0,77 Credits por certificado |
 | Historial y verificación | solo emisiones de test | solo emisiones de main |
 | Protección | `CHAIN_ID_TEST=1` se rechaza | — |
 
 Las emisiones hechas antes de este cambio se marcan como `main`.
 
-Otras variables: `JWT_SECRET` (obligatoria), `PORT`, `CORREO_CONTACTO` (correo para que las instituciones pidan su alta), `RESEND_API_KEY` y `CORREO_REMITENTE` (correos de recuperación de contraseña), `PUBLIC_VERIFY_URL` (dominio público al que apunta el QR), `CERT_QR_*` y `CERT_NAME_*` (posición del QR y del nombre en la plantilla) y `DEMO_STUDENT_WALLET`.
+Otras variables: `JWT_SECRET` (obligatoria), `PORT`, `CORREO_CONTACTO` (correo para que las instituciones pidan su alta), `SMTP_*` o `RESEND_API_KEY`, y `CORREO_REMITENTE` (correos de recuperación de contraseña), `PUBLIC_VERIFY_URL` (dominio público al que apunta el QR), `CERT_QR_*` y `CERT_NAME_*` (posición del QR y del nombre en la plantilla) y `DEMO_STUDENT_WALLET`.
 
 ---
 
@@ -141,7 +141,7 @@ El filtro se aplica en el servidor: los datos ocultos nunca llegan al navegador.
 
 ## Roles y cuentas de prueba
 
-`npm run seed` crea la institución **Universidad Demo** (`/registro_universidad_demo`, con $100 de crédito) y estas cuentas:
+`npm run seed` crea la institución **Universidad Demo** (`/registro_universidad_demo`, con 100 Credits) y estas cuentas:
 
 | Rol | Entra por | Correo | Contraseña | Qué ve |
 |---|---|---|---|---|
@@ -153,12 +153,16 @@ La wallet del estudiante demo es la cuenta #1 pública de Hardhat. Úsala **solo
 
 ### Flujo completo de un lote
 
-1. Los estudiantes se registran en `/registro_<institución>`, o la institución los agrega a mano. Luego la institución adjunta la plantilla PDF y pulsa **Enviar al administrador**.
-2. El admin lo autoriza en **Solicitudes de lotes**. Solo en MAIN se descuenta el crédito.
+1. Los estudiantes se registran en `/registro_<institución>`, o la institución los agrega a mano. Luego la institución sube (o elige) la plantilla PDF, ve su vista previa y pulsa **Enviar al administrador**.
+2. El admin lo autoriza en **Solicitudes de lotes**, donde puede abrir la plantilla del lote. Solo en MAIN se descuentan los Credits.
 3. El admin pulsa **Emitir**. El asistente se abre con la plantilla y los estudiantes del lote.
 4. El admin genera los PDFs base, confirma y sigue el progreso. El lote queda como `emitida`.
 
-También se puede emitir sin lote: en el asistente se sube la plantilla y un Excel con las columnas `nombre` y `wallet`.
+También se puede emitir sin lote: en el asistente se elige o sube la plantilla y un Excel con las columnas `nombre` y `wallet`.
+
+**Plantillas:** cada PDF subido queda guardado en `backend/uploads/plantillas` y en la tabla `plantillas`, ligado a su institución. Al subirlo se genera una vista previa (PNG con un nombre y un QR de ejemplo en sus posiciones reales); si el PDF no se puede leer, se rechaza en ese momento. El admin ve las plantillas de cada institución en su ficha, y los lotes guardan la plantilla con la que se enviaron (`plantilla_id`).
+
+**Credits:** el saldo de cada institución y el costo de los lotes se muestran en Credits (icono de moneda), no en dinero. Internamente las columnas siguen llamándose `credito_usd` y `costo_usd` para no romper bases existentes.
 
 ---
 
@@ -171,7 +175,9 @@ También se puede emitir sin lote: en el asistente se sube la plantilla y un Exc
 | `POST /api/panel/estudiantes/:id/enlace-recuperacion` | admin e institución (solo sus estudiantes) |
 | `GET /api/panel/red`, `GET /api/panel/red/estado`, `PUT /api/panel/red/modo` | sesión / admin |
 | `POST/PATCH/DELETE /api/panel/instituciones` (multipart con logo), `/instituciones/:id/credito` | admin |
-| `/api/panel/resumen`, `/estudiantes`, `/lotes` | admin e institución (solo la suya) |
+| `/api/panel/resumen`, `/estudiantes`, `/lotes` (JSON con `plantilla_id`) | admin e institución (solo la suya) |
+| `GET/POST /api/panel/plantillas` (multipart `plantilla`), `GET /api/panel/plantillas/:id/vista` (PNG), `/:id/archivo` (PDF) | admin e institución (solo las suyas) |
+| `GET /api/panel/correo/estado`, `POST /api/panel/correo/prueba` | admin |
 | `/api/panel/mis-certificados`, `/api/panel/mi-wallet` | estudiante |
 | `/api/certificados/*` (validar Excel, preparar, emitir, historial, emisión individual) | admin |
 
@@ -191,9 +197,10 @@ backend/
   Plantilla_Pdf.js         Nombre, QR y vista previa del PDF
   Marca_Institucion.js     Ruta (slug), color y logo de cada institución
   Recuperacion.js          Enlaces de recuperación de contraseña
-  Correo.js                Envío de correos (Resend)
-  Rutas_*.js               Sesión, panel, público y certificados
+  Correo.js                Envío de correos (SMTP o Resend)
+  Rutas_*.js               Sesión, panel, plantillas, público y certificados
   uploads/logos/           Logos subidos (servidos en /Logos_Instituciones)
+  uploads/plantillas/      Plantillas PDF guardadas y sus vistas previas
   Base_Datos.js            Esquema SQLite y migraciones
   Semilla.js               Cuentas de prueba
 frontend/

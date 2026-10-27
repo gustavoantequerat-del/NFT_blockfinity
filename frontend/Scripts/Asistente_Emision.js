@@ -3,19 +3,19 @@
 import { Llamar_Api } from './Api.js';
 import { Estado, Institucion_Actual } from './Estado.js';
 import { Registrar_Pantalla, Mostrar_Pantalla } from './Navegacion.js';
+import { Cargar_Selector_Plantillas, Plantilla_Elegida } from './Plantillas.js';
 import {
   Por_Id, Poner_Texto, Escapar, Acortar, Formatear_Fecha, Etiqueta_Estado,
   Enlaces_Emision, Fila_Vacia, Mostrar_Aviso,
 } from './Utilidades.js';
 
-const Asistente = { Paso: 1, Plantilla: null, Excel: null, Filas: [], Preparados: [], Lote: null, Trabajo_Id: null };
+const Asistente = { Paso: 1, Excel: null, Filas: [], Preparados: [], Lote: null, Trabajo_Id: null };
 
 function Reiniciar_Asistente() {
-  Object.assign(Asistente, { Paso: 1, Plantilla: null, Excel: null, Filas: [], Preparados: [], Lote: null });
+  Object.assign(Asistente, { Paso: 1, Excel: null, Filas: [], Preparados: [], Lote: null });
   document.querySelectorAll('[data-paso-asistente] input[type="file"]').forEach((Entrada) => { Entrada.value = ''; });
   Poner_Texto('asis-resumen-filas', '');
   Por_Id('tabla-asis-filas').innerHTML = Fila_Vacia(4, 'Sube un Excel para ver las filas.');
-  document.querySelector('[data-archivo-nombre="plantilla"]').textContent = 'Seleccionar plantilla PDF';
   document.querySelector('[data-archivo-nombre="excel"]').textContent = 'Seleccionar Excel de estudiantes';
   Por_Id('conf-casilla').checked = false;
   Por_Id('boton-emitir').disabled = true;
@@ -39,7 +39,7 @@ function Pintar_Datos_Red() {
   Info_Lote.hidden = !Asistente.Lote;
   if (Asistente.Lote) {
     Info_Lote.textContent = `Emitiendo el lote “${Asistente.Lote.nombre}” (${Asistente.Filas.length} estudiantes). `
-      + (Asistente.Lote.tiene_plantilla ? `Usa la plantilla enviada por la institución (${Asistente.Lote.plantilla_nombre}); puedes reemplazarla.` : 'Sube la plantilla PDF.');
+      + (Asistente.Lote.plantilla_id ? 'Ya está elegida la plantilla que envió la institución; puedes cambiarla.' : 'Elige o sube la plantilla PDF.');
   }
   Por_Id('asis-archivo-excel').hidden = Boolean(Asistente.Lote);
 }
@@ -72,16 +72,18 @@ function Pintar_Confirmacion() {
 Registrar_Pantalla('asistente', {
   Titulo: 'Nueva emisión',
   Roles: ['admin'],
-  Al_Mostrar: () => {
+  Al_Mostrar: async () => {
     Pintar_Datos_Red();
     Ir_A_Paso(Asistente.Paso);
+    await Cargar_Plantillas_Asistente();
   },
 });
 
 // ---------- Archivos ----------
 
-function Elegir_Plantilla(Archivo) {
-  Asistente.Plantilla = Archivo;
+// Plantillas guardadas de la institución elegida (la del lote, si viene de uno).
+function Cargar_Plantillas_Asistente() {
+  return Cargar_Selector_Plantillas('asistente', Institucion_Actual()?.id, Asistente.Lote?.plantilla_id || Plantilla_Elegida('asistente'));
 }
 
 async function Elegir_Excel(Archivo) {
@@ -97,7 +99,7 @@ async function Elegir_Excel(Archivo) {
 
 function Ir_Paso_Asistente(Nodo) {
   const Paso = Number(Nodo.dataset.paso);
-  if (Paso === 2 && !Asistente.Plantilla && !Asistente.Lote?.tiene_plantilla) return Mostrar_Aviso('Selecciona la plantilla PDF.', true);
+  if (Paso === 2 && !Plantilla_Elegida('asistente')) return Mostrar_Aviso('Elige o sube la plantilla PDF.', true);
   if (Paso === 4 && !Asistente.Preparados.length) return Mostrar_Aviso('Primero genera los PDFs base.', true);
   Ir_A_Paso(Paso);
 }
@@ -105,7 +107,7 @@ function Ir_Paso_Asistente(Nodo) {
 async function Preparar_Certificados() {
   if (!Asistente.Filas.some((Fila) => Fila.valido)) return Mostrar_Aviso('No hay filas válidas para emitir.', true);
   const Formulario = new FormData();
-  if (Asistente.Plantilla) Formulario.append('plantilla', Asistente.Plantilla);
+  Formulario.append('plantilla_id', Plantilla_Elegida('asistente'));
   if (Asistente.Lote) Formulario.append('lote_id', Asistente.Lote.id);
   else Formulario.append('excel', Asistente.Excel);
 
@@ -183,14 +185,15 @@ async function Emitir_Lote(Nodo) {
   const Datos = await Llamar_Api(`/api/certificados/lote/${Nodo.dataset.id}/filas`);
   Reiniciar_Asistente();
   Estado.Institucion_Activa = Number(Nodo.dataset.institucion);
-  Asistente.Lote = { id: Number(Nodo.dataset.id), nombre: Nodo.closest('tr')?.querySelector('td:nth-child(2) b')?.textContent || 'lote', tiene_plantilla: Datos.tiene_plantilla, plantilla_nombre: Datos.plantilla_nombre };
+  Asistente.Lote = { id: Number(Nodo.dataset.id), nombre: Nodo.closest('tr')?.querySelector('td:nth-child(2) b')?.textContent || 'lote', plantilla_id: Datos.plantilla?.id || null };
   Asistente.Filas = Datos.filas;
   Pintar_Filas();
   Mostrar_Pantalla('asistente');
 }
 
-function Cambiar_Institucion_Asistente(Selector) {
+async function Cambiar_Institucion_Asistente(Selector) {
   Estado.Institucion_Activa = Number(Selector.value);
+  await Cargar_Plantillas_Asistente();
 }
 
 // ---------- Historial ----------
@@ -217,4 +220,4 @@ export const Acciones = {
   Ir_Paso_Asistente, Preparar_Certificados, Confirmar_Emision, Iniciar_Emision,
   Emitir_Para_Institucion, Emitir_Lote, Cambiar_Institucion_Asistente,
 };
-export const Archivos = { plantilla: Elegir_Plantilla, excel: Elegir_Excel };
+export const Archivos = { excel: Elegir_Excel };
