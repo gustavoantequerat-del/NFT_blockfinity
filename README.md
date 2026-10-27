@@ -27,7 +27,7 @@ npm start                 # http://localhost:3000 → redirige a /login
 | `/login` | Estudiantes y admins institucionales | Inicio de sesión. Cada cuenta entra a su panel con la marca de su institución. No se pueden crear cuentas aquí |
 | `/admin` | Administrador de la plataforma | Inicio de sesión del administrador. Las cuentas de admin no entran por `/login` y las demás no entran por `/admin` |
 | `/registro` | Estudiantes | Registro en la institución principal, **Blockfinity Advisors** |
-| `/registro_<institución>` | Estudiantes | Registro con nombre, correo, contraseña y wallet. Quien se registra queda como estudiante de esa institución. Ej.: `/registro_rosa_gattorno` |
+| `/registro_<institución>` | Estudiantes | Registro con nombre, correo, contraseña y wallet. Quien se registra queda como estudiante de esa institución. Si ya tiene cuenta en otra, se registra con el mismo correo y la misma contraseña y queda en ambas. Ej.: `/registro_rosa_gattorno` |
 | `/invitado` | Cualquiera, sin cuenta | Landing que explica el certificado NFT, con **Comprobar** (escribir el identificador o escanear el QR con la cámara) |
 | `/verificar` y `/?token=…` | Cualquiera | El QR del certificado abre `/?token=…&cid=…&red=…`. Sin sesión lleva a la landing de `/invitado` con el resultado; con sesión, a la pantalla de verificación del panel |
 
@@ -120,9 +120,11 @@ En el detalle de la institución, el administrador puede cambiar el color, el lo
 **Eliminar institución** es exclusivo del administrador y pide escribir el nombre para confirmar.
 
 - **Se borran:** la institución, su ruta de registro, su cuenta de admin institucional, sus lotes con las plantillas y su logo.
-- **Pasan a Blockfinity Advisors:** sus estudiantes, con su cuenta y su lugar en la lista, y sus certificados. Así siguen entrando por `/login` y viendo sus NFT.
+- **Pasan a Blockfinity Advisors:** sus estudiantes, con su cuenta y su lugar en la lista, y sus certificados. Así siguen entrando por `/login` y viendo sus NFT. Los estudiantes que también están en otra institución se quedan solo en esa.
 
-Si una institución quita a un estudiante de su lista, ese estudiante pierde su cuenta.
+**Estudiantes en varias instituciones:** una cuenta de estudiante (un correo) puede pertenecer a varias instituciones. Al registrarse en `/registro_<otra>` con el mismo correo y la misma contraseña, se suma a la lista de esa institución con la wallet de su cuenta, y esa institución ya puede incluirlo en sus lotes. Con otra contraseña se rechaza (protege la cuenta) y se le sugiere recuperarla. Si la institución ya lo había cargado a mano con ese correo, se usa esa fila en vez de duplicarlo. En **Mis certificados** el estudiante ve todas sus instituciones.
+
+Si una institución quita a un estudiante de su lista, el estudiante sigue en sus otras instituciones; solo pierde la cuenta si no le queda ninguna.
 
 ## Qué muestra la verificación a cada quien
 

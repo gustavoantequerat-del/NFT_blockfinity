@@ -233,7 +233,17 @@ Rutas.delete('/instituciones/:id', Solo_Admin, (Peticion, Respuesta) => {
     // Los estudiantes que cargó la cuenta institucional se quedan, sin autor.
     Base_Datos.prepare("UPDATE estudiantes_institucionales SET creado_por = NULL WHERE creado_por IN (SELECT id FROM usuarios WHERE institucion_id = ? AND rol = 'viewer')").run(Institucion.id);
     Base_Datos.prepare("DELETE FROM usuarios WHERE institucion_id = ? AND rol = 'viewer'").run(Institucion.id);
-    Base_Datos.prepare("UPDATE usuarios SET institucion_id = ? WHERE institucion_id = ? AND rol = 'student'").run(Principal_Id, Institucion.id);
+    // Estudiantes: los que también están en otra institución siguen allá;
+    // los demás (y los cargados a mano) pasan a la principal.
+    Base_Datos.prepare(`
+      UPDATE usuarios SET institucion_id = COALESCE(
+        (SELECT e.institucion_id FROM estudiantes_institucionales e WHERE e.usuario_id = usuarios.id AND e.institucion_id != ? ORDER BY e.id LIMIT 1), ?)
+      WHERE institucion_id = ? AND rol = 'student'
+    `).run(Institucion.id, Principal_Id, Institucion.id);
+    Base_Datos.prepare(`
+      DELETE FROM estudiantes_institucionales WHERE institucion_id = ? AND usuario_id IN
+        (SELECT usuario_id FROM estudiantes_institucionales WHERE institucion_id != ? AND usuario_id IS NOT NULL)
+    `).run(Institucion.id, Institucion.id);
     Base_Datos.prepare('UPDATE estudiantes_institucionales SET institucion_id = ? WHERE institucion_id = ?').run(Principal_Id, Institucion.id);
     Base_Datos.prepare('UPDATE emisiones SET institucion_id = ? WHERE institucion_id = ?').run(Principal_Id, Institucion.id);
     Base_Datos.prepare('DELETE FROM solicitudes_acceso WHERE institucion_id = ?').run(Institucion.id);
@@ -289,10 +299,22 @@ Rutas.delete('/estudiantes/:id', Solo_Personal, (Peticion, Respuesta) => {
     return Respuesta.status(403).json({ exito: false, mensaje: 'No puedes modificar este estudiante.' });
   }
   Base_Datos.prepare('DELETE FROM estudiantes_institucionales WHERE id = ?').run(Estudiante.id);
-  // Si se registró por la ruta de la institución, también pierde el acceso.
-  if (Estudiante.usuario_id) Base_Datos.prepare("DELETE FROM usuarios WHERE id = ? AND rol = 'student'").run(Estudiante.usuario_id);
+  if (Estudiante.usuario_id) Quitar_Cuenta_De_Institucion(Estudiante.usuario_id, Estudiante.institucion_id);
   Respuesta.json({ exito: true });
 });
+
+// Una cuenta de estudiante puede estar en varias instituciones. Al quitarla
+// de una sigue en las otras (su institución de inicio pasa a otra de ellas);
+// si no queda en ninguna, se borra la cuenta.
+function Quitar_Cuenta_De_Institucion(Usuario_Id, Institucion_Id) {
+  const Otra = Base_Datos.prepare('SELECT institucion_id FROM estudiantes_institucionales WHERE usuario_id = ? ORDER BY id LIMIT 1').get(Usuario_Id);
+  if (Otra) {
+    Base_Datos.prepare("UPDATE usuarios SET institucion_id = ? WHERE id = ? AND rol = 'student' AND institucion_id = ?").run(Otra.institucion_id, Usuario_Id, Institucion_Id);
+    return;
+  }
+  Base_Datos.prepare('DELETE FROM reset_tokens WHERE user_id = ?').run(Usuario_Id);
+  Base_Datos.prepare("DELETE FROM usuarios WHERE id = ? AND rol = 'student'").run(Usuario_Id);
+}
 
 // Enlace para que un estudiante cree una contraseña nueva (útil si el
 // servidor no tiene correo configurado). Válido 1 hora, un solo uso.
@@ -390,7 +412,12 @@ Rutas.get('/mis-certificados', Requerir_Rol('student'), (Peticion, Respuesta) =>
         ORDER BY e.creado_en DESC, e.id DESC
       `).all(Wallet)
     : [];
-  Respuesta.json({ exito: true, wallet: Wallet, certificados: Certificados });
+  // Todas las instituciones en las que se registró con esta cuenta.
+  const Instituciones = Base_Datos.prepare(`
+    SELECT DISTINCT i.nombre FROM estudiantes_institucionales e JOIN instituciones i ON i.id = e.institucion_id
+    WHERE e.usuario_id = ? ORDER BY i.nombre
+  `).all(Peticion.Usuario.id).map((Institucion) => Institucion.nombre);
+  Respuesta.json({ exito: true, wallet: Wallet, certificados: Certificados, instituciones: Instituciones });
 });
 
 Rutas.put('/mi-wallet', Requerir_Rol('student'), (Peticion, Respuesta) => {

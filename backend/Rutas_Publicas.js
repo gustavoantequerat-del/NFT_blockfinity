@@ -32,6 +32,45 @@ Rutas.get('/institucion/:slug', (Peticion, Respuesta) => {
   Respuesta.json({ exito: true, institucion: Datos_Marca(Institucion) });
 });
 
+// Agrega la cuenta a la lista de estudiantes de la institución. Si la
+// institución ya lo había cargado a mano con ese correo, se usa esa fila.
+function Vincular_Estudiante(Institucion_Id, Usuario_Id, Nombre, Correo, Wallet) {
+  const Manual = Base_Datos.prepare('SELECT id FROM estudiantes_institucionales WHERE institucion_id = ? AND lower(correo) = ? AND usuario_id IS NULL ORDER BY id LIMIT 1').get(Institucion_Id, Correo);
+  if (Manual) {
+    Base_Datos.prepare('UPDATE estudiantes_institucionales SET usuario_id = ?, wallet = COALESCE(?, wallet) WHERE id = ?').run(Usuario_Id, Wallet, Manual.id);
+  } else {
+    Base_Datos.prepare('INSERT INTO estudiantes_institucionales (institucion_id, nombre, correo, wallet, usuario_id) VALUES (?, ?, ?, ?, ?)')
+      .run(Institucion_Id, Nombre, Correo, Wallet, Usuario_Id);
+  }
+}
+
+// Un estudiante ya registrado en otra institución se suma a esta con su
+// misma cuenta (correo y contraseña): así ambas pueden emitirle certificados.
+async function Sumar_Cuenta_Existente(Usuario, Institucion, { Nombre, Correo, Contrasena, Wallet }) {
+  if (Usuario.rol !== 'student') return { Estado: 409, Mensaje: 'Ese correo es de una cuenta de institución o de administración. Usa otro correo.' };
+  if (!(await bcrypt.compare(Contrasena, Usuario.contrasena_hash))) {
+    return { Estado: 409, Mensaje: 'Ya tienes una cuenta con ese correo (de otra institución). Escribe la misma contraseña de esa cuenta para sumarte también a esta. Si no la recuerdas, recupérala en /login.' };
+  }
+  if (Base_Datos.prepare('SELECT id FROM estudiantes_institucionales WHERE institucion_id = ? AND usuario_id = ?').get(Institucion.id, Usuario.id)) {
+    return { Estado: 409, Mensaje: `Ya estás registrado en ${Institucion.nombre}. Inicia sesión en /login.` };
+  }
+  // La wallet de la cuenta manda: es la misma persona en todas sus instituciones.
+  const Wallet_Cuenta = Usuario.wallet || Wallet || null;
+  Base_Datos.exec('BEGIN');
+  try {
+    if (!Usuario.wallet && Wallet_Cuenta) {
+      Base_Datos.prepare('UPDATE usuarios SET wallet = ? WHERE id = ?').run(Wallet_Cuenta, Usuario.id);
+      Base_Datos.prepare('UPDATE estudiantes_institucionales SET wallet = ? WHERE usuario_id = ?').run(Wallet_Cuenta, Usuario.id);
+    }
+    Vincular_Estudiante(Institucion.id, Usuario.id, Nombre, Correo, Wallet_Cuenta);
+    Base_Datos.exec('COMMIT');
+  } catch (Error_Registro) {
+    Base_Datos.exec('ROLLBACK');
+    return { Estado: 500, Mensaje: Error_Registro.message };
+  }
+  return { Estado: 201, Mensaje: `Ya tenías cuenta: ahora también eres estudiante de ${Institucion.nombre}. Entra en /login con tu misma contraseña.` };
+}
+
 // Registro de un estudiante en su institución: crea su cuenta (entra por
 // /login) y lo agrega a la lista de estudiantes de la institución.
 Rutas.post('/registro/:slug', async (Peticion, Respuesta) => {
@@ -47,8 +86,10 @@ Rutas.post('/registro/:slug', async (Peticion, Respuesta) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(Correo)) return Respuesta.status(400).json({ exito: false, mensaje: 'El correo no tiene un formato válido.' });
   if (Contrasena.length < 8) return Respuesta.status(400).json({ exito: false, mensaje: 'La contraseña debe tener al menos 8 caracteres.' });
   if (Wallet && !Blockchain.Es_Wallet_Valida(Wallet)) return Respuesta.status(400).json({ exito: false, mensaje: 'La wallet no tiene un formato válido (0x + 40 caracteres).' });
-  if (Base_Datos.prepare('SELECT id FROM usuarios WHERE correo = ?').get(Correo)) {
-    return Respuesta.status(409).json({ exito: false, mensaje: 'Ya existe una cuenta con ese correo. Inicia sesión en /login.' });
+  const Existente = Base_Datos.prepare('SELECT * FROM usuarios WHERE correo = ?').get(Correo);
+  if (Existente) {
+    const { Estado, Mensaje } = await Sumar_Cuenta_Existente(Existente, Institucion, { Nombre, Correo, Contrasena, Wallet });
+    return Respuesta.status(Estado).json({ exito: Estado === 201, mensaje: Mensaje });
   }
 
   const Hash = await bcrypt.hash(Contrasena, 12);
@@ -57,8 +98,7 @@ Rutas.post('/registro/:slug', async (Peticion, Respuesta) => {
     const Usuario = Base_Datos.prepare(
       "INSERT INTO usuarios (correo, contrasena_hash, nombre, rol, institucion_id, estado, wallet) VALUES (?, ?, ?, 'student', ?, 'activo', ?)"
     ).run(Correo, Hash, Nombre, Institucion.id, Wallet || null);
-    Base_Datos.prepare('INSERT INTO estudiantes_institucionales (institucion_id, nombre, correo, wallet, usuario_id) VALUES (?, ?, ?, ?, ?)')
-      .run(Institucion.id, Nombre, Correo, Wallet || null, Usuario.lastInsertRowid);
+    Vincular_Estudiante(Institucion.id, Usuario.lastInsertRowid, Nombre, Correo, Wallet || null);
     Base_Datos.exec('COMMIT');
   } catch (Error_Registro) {
     Base_Datos.exec('ROLLBACK');

@@ -95,7 +95,7 @@
     <form class="registro-panel registro-aparecer" data-paso-registro="formulario" data-formulario="Registrar_Estudiante">
       <p class="registro-antetitulo">Registro de estudiantes</p>
       <h1 class="registro-titulo" id="registro-titulo">Crea tu cuenta</h1>
-      <p class="registro-guia">Con esta cuenta verás los certificados NFT que tu institución emita a tu wallet.</p>
+      <p class="registro-guia">Con esta cuenta verás los certificados NFT que tu institución emita a tu wallet. ¿Ya tienes cuenta en otra institución? Usa el mismo correo y la misma contraseña: quedarás registrado en ambas.</p>
       <label class="campo"><span>Nombre completo</span><input class="entrada" name="nombre" autocomplete="name" placeholder="Tal como quieres que aparezca en tu certificado" required /></label>
       <label class="campo"><span>Correo</span><input class="entrada" name="correo" type="email" autocomplete="email" required /></label>
       <label class="campo"><span>Contraseña</span><input class="entrada" name="contrasena" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required /></label>
@@ -580,7 +580,7 @@
         <div class="pantalla" data-pantalla="certificados">
           <div class="cabecera fila-cabecera">
             <div><h1>Mis certificados</h1><p>Certificados NFT emitidos a tu wallet.</p></div>
-            <span class="pastilla">Cuenta de estudiante</span>
+            <span class="pastillas" id="mis-instituciones"><span class="pastilla">Cuenta de estudiante</span></span>
           </div>
           <form class="tarjeta relleno separado fila-formulario" data-formulario="Guardar_Mi_Wallet">
             <label class="campo"><span>Dirección de tu wallet</span><input class="entrada mono" name="wallet" id="mi-wallet" placeholder="0x…" required /></label>
